@@ -47,7 +47,7 @@ export function AppShell({ children }: Props) {
           aria-label="Bijeli Najam — početna"
           className="h-14 flex items-center px-4 border-b transition-opacity hover:opacity-80"
         >
-          <LogoMark variant="full" width={150} />
+          <LogoMark variant="full" width={108} />
         </Link>
 
         <div className="px-3 py-3 border-b">

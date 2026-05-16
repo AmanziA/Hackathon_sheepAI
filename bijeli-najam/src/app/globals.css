@@ -179,13 +179,6 @@
      dot grid + an even fainter offset grid line for measured-paper feel. */
   .bg-paper {
     background-color: var(--brand-orange-50);
-    background-image:
-      radial-gradient(circle at 1px 1px, color-mix(in oklch, var(--brand-gray-400) 40%, transparent) 1px, transparent 0),
-      linear-gradient(to right, color-mix(in oklch, var(--brand-gray-400) 12%, transparent) 1px, transparent 1px),
-      linear-gradient(to bottom, color-mix(in oklch, var(--brand-gray-400) 12%, transparent) 1px, transparent 1px),
-      linear-gradient(180deg, hsl(0 0% 100% / 0.4) 0%, transparent 60%);
-    background-size: 22px 22px, 110px 110px, 110px 110px, 100% 100%;
-    background-position: 0 0, 0 0, 0 0, 0 0;
   }
 
   /* Decorative ruler tick marks on the bottom-left edge of a container.
