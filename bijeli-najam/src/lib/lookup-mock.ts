@@ -142,15 +142,22 @@ const OWNERS = [
   "Stjepanović Stjepan",
 ];
 
-export function lookupAddress(rawAddress: string): LookupResult {
+export function lookupAddress(
+  rawAddress: string,
+  override?: { lat: number; lon: number }
+): LookupResult {
   const address = rawAddress.trim();
   const seed = address.toLowerCase();
   const kvart = detectKvart(address);
   const base = centerForSlug(kvart.slug) ?? SPLIT_CENTER;
 
-  // Small offset within the kvart for the searched address itself (≤120m)
-  const own = offsetMeters(seed, "own", 120);
-  const ownPos = toLatLon(base, own.dx, own.dy);
+  // Use real coords if available, otherwise small offset within the kvart
+  const ownPos = override
+    ? { lat: override.lat, lon: override.lon }
+    : (() => {
+        const own = offsetMeters(seed, "own", 120);
+        return toLatLon(base, own.dx, own.dy);
+      })();
 
   const flaggedCount = 3 + (hash(seed + "fc") % 5); // 3..7
   const flagged = Array.from({ length: flaggedCount }, (_, i) => {

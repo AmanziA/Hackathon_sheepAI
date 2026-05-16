@@ -1,6 +1,6 @@
 "use client";
 
-import { useEffect, useMemo, useRef, useState } from "react";
+import { useEffect, useRef, useState } from "react";
 import dynamic from "next/dynamic";
 import { Input } from "@/components/ui/input";
 import { Button, buttonVariants } from "@/components/ui/button";
@@ -21,10 +21,12 @@ import { lookupAddress, type LookupResult } from "@/lib/lookup-mock";
 import { formatEur } from "@/lib/format";
 import { cn } from "@/lib/utils";
 
-const Map3D = dynamic(() => import("./map3d"), { ssr: false });
-
-const ADDRESS_BLUE: [number, number, number, number] = [37, 99, 235, 230];
-const REGISTERED_GREEN: [number, number, number, number] = [22, 163, 74, 220];
+const LookupMap = dynamic(() => import("./lookup-map").then((m) => m.LookupMap), {
+  ssr: false,
+  loading: () => (
+    <div className="h-[460px] w-full rounded-lg border bg-muted/30 animate-pulse" />
+  ),
+});
 
 // Split viewbox (left, top, right, bottom) — constrains Nominatim search
 const SPLIT_VIEWBOX = "16.38,43.55,16.55,43.46";
@@ -36,6 +38,8 @@ type Suggestion = {
   short: string;
   lat: number;
   lon: number;
+  osm_type: string;
+  osm_id: number;
 };
 
 export function AddressLookup() {
@@ -47,6 +51,7 @@ export function AddressLookup() {
   const [suggestLoading, setSuggestLoading] = useState(false);
   const [suggestOpen, setSuggestOpen] = useState(false);
   const [activeIdx, setActiveIdx] = useState(-1);
+  const [selectedOsm, setSelectedOsm] = useState<{ osm_type: string; osm_id: number } | null>(null);
   const skipNextFetch = useRef(false);
   const inputWrapRef = useRef<HTMLDivElement>(null);
 
@@ -84,6 +89,8 @@ export function AddressLookup() {
           display_name: string;
           lat: string;
           lon: string;
+          osm_type: string;
+          osm_id: number;
           address?: {
             road?: string;
             house_number?: string;
@@ -103,6 +110,8 @@ export function AddressLookup() {
             short: short.trim(),
             lat: Number(r.lat),
             lon: Number(r.lon),
+            osm_type: r.osm_type,
+            osm_id: r.osm_id,
           };
         });
         setSuggestions(items);
@@ -133,13 +142,12 @@ export function AddressLookup() {
     return () => document.removeEventListener("mousedown", onClickOutside);
   }, []);
 
-  function runLookup(addr: string) {
+  function runLookup(addr: string, coords?: { lat: number; lon: number }) {
     setLoading(true);
     setResult(null);
     setSuggestOpen(false);
-    // tiny delay so the spinner registers, then synchronously lookup mock data
     setTimeout(() => {
-      setResult(lookupAddress(addr));
+      setResult(lookupAddress(addr, coords));
       setLoading(false);
     }, 350);
   }
@@ -149,7 +157,8 @@ export function AddressLookup() {
     setAddress(s.short);
     setSuggestOpen(false);
     setActiveIdx(-1);
-    runLookup(s.short);
+    setSelectedOsm({ osm_type: s.osm_type, osm_id: s.osm_id });
+    runLookup(s.short, { lat: s.lat, lon: s.lon });
   }
 
   function handleSubmit(e: React.FormEvent<HTMLFormElement>) {
@@ -159,6 +168,7 @@ export function AddressLookup() {
       return;
     }
     if (!address.trim()) return;
+    setSelectedOsm(null);
     runLookup(address.trim());
   }
 
@@ -174,35 +184,6 @@ export function AddressLookup() {
       setSuggestOpen(false);
     }
   }
-
-  const markers = useMemo(() => {
-    if (!result) return [];
-    return [
-      {
-        id: "__searched__",
-        lat: result.searched.lat,
-        lon: result.searched.lon,
-        confidence: 1,
-        title: `Vaša adresa: ${result.searched.address}`,
-        color: ADDRESS_BLUE,
-      },
-      ...result.flagged.map((f) => ({
-        id: f.id,
-        lat: f.lat,
-        lon: f.lon,
-        confidence: f.confidence_unregistered,
-        title: `${f.title} · ${f.platform} · ${Math.round(f.distance_m)}m`,
-      })),
-      ...result.registered.map((r) => ({
-        id: r.id,
-        lat: r.lat,
-        lon: r.lon,
-        confidence: 0.6,
-        title: `${r.name} · ${r.owner} · ${Math.round(r.distance_m)}m (registriran)`,
-        color: REGISTERED_GREEN,
-      })),
-    ];
-  }, [result]);
 
   const recent = result
     ? [...result.flagged].sort((a, b) => a.days_ago - b.days_ago).slice(0, 5)
@@ -269,22 +250,29 @@ export function AddressLookup() {
       {result && (
         <div className="grid lg:grid-cols-2 gap-5">
           {/* LEFT: map */}
-          <div className="lg:order-1 order-2 h-[460px] rounded-lg border overflow-hidden relative">
-            <Map3D markers={markers} className="h-full w-full" />
-            <div className="absolute top-3 left-3 z-10 bg-background/90 backdrop-blur border rounded-md px-2.5 py-1.5 text-[11px] space-y-1 shadow">
-              <div className="flex items-center gap-2">
-                <span className="w-2.5 h-2.5 rounded-sm bg-blue-600" />
-                <span className="text-muted-foreground">Vaša adresa</span>
-              </div>
-              <div className="flex items-center gap-2">
-                <span className="w-2.5 h-2.5 rounded-sm bg-red-600" />
-                <span className="text-muted-foreground">Sumnjivi oglas</span>
-              </div>
-              <div className="flex items-center gap-2">
-                <span className="w-2.5 h-2.5 rounded-sm bg-green-600" />
-                <span className="text-muted-foreground">Registrirani</span>
-              </div>
-            </div>
+          <div className="lg:order-1 order-2">
+            <LookupMap
+              searched={{
+                lat: result.searched.lat,
+                lon: result.searched.lon,
+                address: result.searched.address,
+              }}
+              flagged={result.flagged.map((f) => ({
+                id: f.id,
+                lat: f.lat,
+                lon: f.lon,
+                title: `${f.title} · ${f.platform}`,
+                distance_m: f.distance_m,
+              }))}
+              registered={result.registered.map((r) => ({
+                id: r.id,
+                lat: r.lat,
+                lon: r.lon,
+                name: r.name,
+                distance_m: r.distance_m,
+              }))}
+              osm={selectedOsm}
+            />
           </div>
 
           {/* RIGHT: snapshot + cost + tabs */}
