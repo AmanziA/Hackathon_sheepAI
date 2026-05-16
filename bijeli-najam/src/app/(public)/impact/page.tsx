@@ -60,7 +60,7 @@ export default async function ImpactPage() {
         <StatNumber value={neighborhoods.length} label="Zahvaćenih kvartova" />
       </div>
 
-      <DashedDivider tone="orange" />
+      <DashedDivider />
 
       <div className="space-y-4">
         <SectionHead
@@ -71,7 +71,7 @@ export default async function ImpactPage() {
         <ImpactMap neighborhoods={neighborhoods} />
       </div>
 
-      <DashedDivider tone="orange" />
+      <DashedDivider />
 
       <div className="space-y-5">
         <SectionHead

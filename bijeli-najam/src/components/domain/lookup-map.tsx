@@ -178,9 +178,11 @@ export function LookupMap({ searched, flagged, registered, osm, className }: Pro
         style={{ height: "100%", width: "100%" }}
       >
         <TileLayer
-          attribution='&copy; <a href="https://www.openstreetmap.org/copyright">OpenStreetMap</a>'
-          url="https://tile.openstreetmap.org/{z}/{x}/{y}.png"
-          maxZoom={19}
+          attribution='&copy; <a href="https://stadiamaps.com/">Stadia Maps</a> &copy; <a href="https://www.openstreetmap.org/copyright">OpenStreetMap</a>'
+          url={`https://tiles.stadiamaps.com/tiles/alidade_smooth/{z}/{x}/{y}{r}.png?api_key=${process.env.NEXT_PUBLIC_STADIA_KEY ?? ""}`}
+          maxZoom={20}
+          // @ts-expect-error retina detection — leaflet maps {r} to "" or "@2x"
+          detectRetina
         />
         <Recenter lat={searched.lat} lon={searched.lon} />
 

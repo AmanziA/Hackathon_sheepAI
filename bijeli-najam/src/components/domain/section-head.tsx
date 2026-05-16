@@ -7,16 +7,7 @@ interface Props {
   className?: string;
   size?: "sm" | "md" | "lg";
   align?: "left" | "center";
-  tone?: "orange" | "red" | "green" | "blue" | "muted";
 }
-
-const TONE: Record<NonNullable<Props["tone"]>, string> = {
-  orange: "bg-[hsl(28_85%_55%)]",
-  red: "bg-destructive",
-  green: "bg-success",
-  blue: "bg-blue-500",
-  muted: "bg-muted-foreground/40",
-};
 
 export function SectionHead({
   eyebrow,
@@ -25,7 +16,6 @@ export function SectionHead({
   className,
   size = "md",
   align = "left",
-  tone = "orange",
 }: Props) {
   const titleClass =
     size === "lg"
@@ -39,11 +29,11 @@ export function SectionHead({
       {eyebrow ? (
         <p
           className={cn(
-            "inline-flex items-center gap-2 text-[10px] font-semibold uppercase tracking-[0.14em] text-muted-foreground",
+            "inline-flex items-center gap-2 text-[10px] font-semibold uppercase tracking-[0.16em] text-muted-foreground/80",
             align === "center" && "justify-center w-full"
           )}
         >
-          <span className={cn("inline-block w-1.5 h-1.5 rounded-full", TONE[tone])} aria-hidden />
+          <span aria-hidden className="inline-block w-3 h-px bg-muted-foreground/40" />
           {eyebrow}
         </p>
       ) : null}

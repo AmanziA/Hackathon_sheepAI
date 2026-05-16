@@ -44,10 +44,10 @@ export default function Map3D({ markers, onMarkerClick, className }: Props) {
 
   const layers = [
     new TileLayer({
-      id: "osm",
-      data: "https://tile.openstreetmap.org/{z}/{x}/{y}.png",
+      id: "stadia",
+      data: `https://tiles.stadiamaps.com/tiles/alidade_smooth/{z}/{x}/{y}.png?api_key=${process.env.NEXT_PUBLIC_STADIA_KEY ?? ""}`,
       minZoom: 0,
-      maxZoom: 19,
+      maxZoom: 20,
       tileSize: 256,
       // eslint-disable-next-line @typescript-eslint/no-explicit-any
       renderSubLayers: (props: any) => {

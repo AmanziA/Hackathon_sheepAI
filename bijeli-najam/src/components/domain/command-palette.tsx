@@ -78,7 +78,7 @@ export function CommandPalette() {
                 key={groupName}
                 heading={
                   <span className="text-[10px] uppercase tracking-widest font-semibold text-muted-foreground/70 px-2 pt-2 pb-1 inline-flex items-center gap-1.5">
-                    <span className="w-1 h-1 rounded-full bg-[hsl(28_85%_55%)]" />
+                    <span aria-hidden className="inline-block w-2 h-px bg-muted-foreground/40" />
                     {groupName}
                   </span>
                 }

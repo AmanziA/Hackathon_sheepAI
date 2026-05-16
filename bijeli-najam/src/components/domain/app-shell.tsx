@@ -50,7 +50,7 @@ export function AppShell({ children }: Props) {
           <span className="font-semibold text-sm tracking-tight">Bijeli Najam</span>
         </Link>
 
-        <div className="px-3 py-3 border-b space-y-2">
+        <div className="px-3 py-3 border-b">
           <button
             onClick={() => setRunning(true)}
             disabled={running}
@@ -67,10 +67,6 @@ export function AppShell({ children }: Props) {
             />
             Pokreni istragu
           </button>
-          <div className="flex items-center justify-center gap-1.5 text-[10px] text-muted-foreground/70">
-            <span>Idi na</span>
-            <kbd className="font-mono px-1 py-0.5 rounded-sm border border-border bg-muted/40 text-[9px] leading-none">⌘K</kbd>
-          </div>
         </div>
 
         <nav className="flex-1 px-2 py-4 flex flex-col gap-0.5">
@@ -147,8 +143,13 @@ export function AppShell({ children }: Props) {
           />
         </nav>
 
-        <div className="px-4 py-3 border-t text-[11px] text-muted-foreground/50">
-          Snimak: 14. svi. 2026.
+        <div className="px-4 py-3 border-t text-[11px] text-muted-foreground/50 flex items-center justify-between gap-2">
+          <span>Snimak: 14. svi. 2026.</span>
+          <span className="inline-flex items-center gap-1">
+            <kbd className="font-mono px-1 py-0.5 rounded-sm border border-border bg-muted/40 text-[9px] leading-none text-muted-foreground/70">
+              ⌘K
+            </kbd>
+          </span>
         </div>
       </aside>
 
