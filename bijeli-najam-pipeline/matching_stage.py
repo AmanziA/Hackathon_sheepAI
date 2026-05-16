@@ -18,7 +18,7 @@ import os
 load_dotenv()
 
 from supabase import create_client, Client
-from agents.investigation import investigate
+from agents.investigation import investigate, persist_investigation_trace
 
 SUPABASE_URL = os.environ["SUPABASE_URL"]
 SUPABASE_KEY = os.environ["SUPABASE_SERVICE_ROLE_KEY"]
@@ -52,15 +52,14 @@ async def run_matching(limit: int | None = None, neighborhood: str | None = None
         print(f"  [{i+1}/{len(candidates)}] {candidate.get('title', cid)[:60]}")
 
         try:
-            trace = await investigate(candidate, supabase)
-            await persist_trace(trace, candidate, supabase)
+            trace, decisions = investigate(candidate, supabase)
+            persist_investigation_trace(trace, decisions, candidate, supabase)
             success += 1
         except Exception as e:
             print(f"    ERROR: {e}")
             errors += 1
             continue
 
-        # Small delay to avoid API rate limits
         await asyncio.sleep(0.5)
 
     print(f"\nDone. {success} succeeded, {errors} failed.")

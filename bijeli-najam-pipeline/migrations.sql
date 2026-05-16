@@ -54,9 +54,17 @@ create table if not exists candidate_listings (
   beds            int,
   guests          int,
   photos          jsonb,
+  address         text,
+  street          text,
+  house_number    text,
   scraped_at      timestamptz not null default now(),
   unique (platform, external_id)
 );
+
+-- Idempotent column adds for environments where the table predates them.
+alter table candidate_listings add column if not exists address      text;
+alter table candidate_listings add column if not exists street       text;
+alter table candidate_listings add column if not exists house_number text;
 create index if not exists idx_candidate_listings_city_nb on candidate_listings (city, neighborhood);
 create index if not exists idx_candidate_listings_latlon on candidate_listings (approx_lat, approx_lon);
 

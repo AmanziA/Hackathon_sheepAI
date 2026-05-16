@@ -7,7 +7,6 @@ Start with:
 
 The Next.js dashboard proxies to this service via /api/discover and /api/investigate.
 """
-import asyncio
 import os
 
 from dotenv import load_dotenv
@@ -91,29 +90,45 @@ def discover(registered_id: str, background_tasks: BackgroundTasks):
     }
 
 
+def _run_investigation_job(candidate: dict, trace_id: str) -> None:
+    """Background worker — runs the investigation agent and finalizes the trace row."""
+    from agents.investigation import investigate, persist_investigation_trace
+    from agents._trace_io import mark_trace_error
+
+    supabase = get_supabase()
+    try:
+        trace, decisions = investigate(candidate, supabase, trace_id=trace_id)
+        persist_investigation_trace(trace, decisions, candidate, supabase, live=True)
+    except Exception as exc:  # noqa: BLE001
+        mark_trace_error(trace_id, f"{type(exc).__name__}: {exc}", supabase)
+
+
 @app.post("/investigate/{candidate_id}")
-def investigate_candidate(candidate_id: str):
-    """Re-run the existing investigation agent on a single candidate listing."""
-    from agents.investigation import investigate as run_investigation
-    from matching_stage import persist_trace
+def investigate_candidate(candidate_id: str, background_tasks: BackgroundTasks):
+    """Kick off an investigation on one candidate listing.
+
+    Inserts a 'running' agent_traces shell row and returns its id immediately.
+    The agent runs in the background and writes trace_steps incrementally so the
+    UI can poll for live progress, matching the discovery flow.
+    """
+    from agents.investigation import create_running_trace
 
     supabase = get_supabase()
     result = (
         supabase.table("candidate_listings")
         .select("*")
         .eq("id", candidate_id)
-        .single()
+        .limit(1)
         .execute()
     )
-    candidate = result.data
+    candidate = (result.data or [None])[0]
     if not candidate:
         raise HTTPException(status_code=404, detail="candidate_listing not found")
 
-    trace = asyncio.run(run_investigation(candidate, supabase))
-    asyncio.run(persist_trace(trace, candidate, supabase))
+    trace_id = create_running_trace(candidate, supabase)
+    background_tasks.add_task(_run_investigation_job, candidate, trace_id)
     return {
-        "trace_id": trace.id,
+        "trace_id": trace_id,
         "candidate_id": candidate_id,
-        "verdict": trace.verdict.final_verdict,
-        "confidence": float(trace.verdict.final_confidence),
+        "status": "running",
     }

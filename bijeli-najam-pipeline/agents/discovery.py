@@ -27,6 +27,11 @@ from agents.trace_schema import (
     TraceStep,
 )
 from agents.tool_registry import DISCOVERY_TOOLS, dispatch_discovery_tool
+from agents._trace_io import (
+    create_running_trace as _shared_create_running_trace,
+    write_step_live as _write_step_live,
+    synthesized_evidence_chain,
+)
 
 ZAI_BASE_URL = os.environ.get("ZAI_BASE_URL", "https://api.z.ai/api/coding/paas/v4")
 ZAI_MODEL = os.environ.get("ZAI_MODEL", "glm-5")
@@ -66,7 +71,11 @@ STEP C — Fetch & disambiguate each candidate:
      - neighborhood / area label
      - stars / rating if shown
      - any unit identifier (apt number, floor, name like "Apt B")
+     - the listing's full address as shown on the page (street + number)
    Compare to the registered unit's beds / category / stars / owner.
+   When you call record_match, include ALL extracted details (especially address,
+   street, house_number, host_name) — the dashboard saves them back to the
+   candidate listing so future runs and the public lookup show the right data.
 
 STEP D — Owner side-lookup (if owner is a company):
    Call search_sudski_registar(company_name=<owner>). If `found:false`, try search_web with `site="fininfo.hr"`, then `site="poslovna.hr"`, then `site="companywall.com"` — these often list directors when the court registry's website search misses. Use the directors' names as candidate host names in STEP C scoring.
@@ -137,48 +146,13 @@ def _zai_client() -> OpenAI:
 
 
 def create_running_trace(unit: dict, supabase: Client) -> str:
-    """Insert a shell agent_traces row in 'running' state so the UI can poll
-    its trace_steps as they're added. Returns the trace_id."""
-    trace_id = str(uuid.uuid4())
-    now = datetime.now(timezone.utc).isoformat()
-    supabase.table("agent_traces").insert(
-        {
-            "id": trace_id,
-            "registered_id": unit["id"],
-            "candidate_id": None,
-            "agent_type": "investigation",
-            "model": ZAI_MODEL,
-            "step_count": 0,
-            "final_verdict": "running",
-            "final_confidence": 0.0,
-            "final_breakdown": {},
-            "evidence_chain": [],
-            "total_tokens": 0,
-            "total_cost_usd": 0.0,
-            "started_at": now,
-            "completed_at": now,
-        }
-    ).execute()
-    return trace_id
-
-
-def _write_step_live(trace_id: str, step: TraceStep, supabase: Client) -> None:
-    """Persist a single step + bump step_count on the parent trace."""
-    supabase.table("trace_steps").insert(
-        {
-            "id": str(uuid.uuid4()),
-            "trace_id": trace_id,
-            "step_index": step.step_index,
-            "tool_called": step.tool_called,
-            "tool_input": step.tool_input,
-            "tool_output": step.tool_output,
-            "why": step.why,
-            "updated_hypothesis": step.updated_hypothesis,
-            "confidence_delta": float(step.confidence_delta),
-            "duration_ms": step.duration_ms,
-        }
-    ).execute()
-    supabase.table("agent_traces").update({"step_count": step.step_index + 1}).eq("id", trace_id).execute()
+    """Public wrapper kept for backward compat with api.py imports."""
+    return _shared_create_running_trace(
+        supabase=supabase,
+        agent_type="discovery",
+        model=ZAI_MODEL,
+        registered_id=unit["id"],
+    )
 
 
 def investigate(unit: dict, supabase: Client, trace_id: str | None = None) -> tuple[AgentTrace, list[dict]]:
@@ -321,7 +295,7 @@ def investigate(unit: dict, supabase: Client, trace_id: str | None = None) -> tu
     trace = AgentTrace(
         id=trace_id,
         candidate_id="",  # filled by persist if we have a best match
-        agent_type="investigation",
+        agent_type="discovery",
         model=ZAI_MODEL,
         steps=steps,
         verdict=verdict,
@@ -420,6 +394,16 @@ def persist_discovery_trace(
         # NOTE: do NOT send `id` on upsert — if the row already exists, Postgres
         # tries to *change* the primary key which collides with FKs from
         # agent_traces / entity_links / flags.
+        # Compose address: prefer what the agent extracted from the listing page;
+        # fall back to the registered unit's address as a sane default.
+        listing_address = (
+            m.get("address")
+            or (
+                " ".join([m.get("street") or "", m.get("house_number") or ""]).strip()
+                or None
+            )
+            or unit.get("address")
+        )
         cand_row = {
             "platform": platform,
             "external_id": external_id,
@@ -431,7 +415,14 @@ def persist_discovery_trace(
             "approx_lon": unit.get("lon"),
             "url": url,
             "beds": m.get("beds") or unit.get("beds"),
+            "guests": m.get("guests"),
+            "price_per_night": m.get("price_per_night"),
+            "address": listing_address,
+            "street": m.get("street") or unit.get("street"),
+            "house_number": m.get("house_number") or unit.get("number"),
         }
+        # Drop keys with None to avoid overwriting existing populated fields on conflict.
+        cand_row = {k: v for k, v in cand_row.items() if v is not None}
         upserted = (
             supabase.table("candidate_listings")
             .upsert(cand_row, on_conflict="platform,external_id")
@@ -494,21 +485,7 @@ def persist_discovery_trace(
     # Synthesize an evidence chain from the matches if the model didn't fill one.
     evidence_chain = [e.model_dump() for e in trace.verdict.evidence_chain]
     if not evidence_chain and matches:
-        evidence_chain = [
-            {
-                "step_index": m.get("_step_index", 0),
-                "fact": (
-                    f"{(m.get('platform') or 'oglas').upper()}: "
-                    f"{m.get('title') or 'oglas pronađen'}"
-                    + (f" — host: {m['host_name']}" if m.get("host_name") else "")
-                    + (f" — kreveti: {m['beds']}" if m.get("beds") else "")
-                    + f" — pouzdanost {int(float(m.get('confidence') or 0) * 100)}%"
-                    + (f" — {m['notes']}" if m.get("notes") else "")
-                ),
-                "tool_called": "record_match",
-            }
-            for m in sorted(matches, key=lambda x: float(x.get("confidence") or 0), reverse=True)
-        ]
+        evidence_chain = synthesized_evidence_chain(matches)
 
     trace_update = {
         "candidate_id": best_match_id,
@@ -530,7 +507,7 @@ def persist_discovery_trace(
         full = {
             "id": trace.id,
             "registered_id": registered_id,
-            "agent_type": "investigation",
+            "agent_type": "discovery",
             "model": trace.model,
             "started_at": trace.started_at.isoformat(),
             **trace_update,

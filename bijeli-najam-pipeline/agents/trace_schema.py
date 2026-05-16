@@ -36,7 +36,15 @@ class FinalBreakdown(BaseModel):
 
 
 class AgentVerdict(BaseModel):
-    final_verdict: Literal["flagged", "clear", "inconclusive"]
+    final_verdict: Literal[
+        "flagged",
+        "clear",
+        "inconclusive",
+        "matched",
+        "unmatched",
+        "no_listings_found",
+        "error",
+    ]
     final_confidence: float
     final_breakdown: FinalBreakdown
     evidence_chain: list[EvidenceItem]
@@ -50,7 +58,7 @@ class AgentVerdict(BaseModel):
 class AgentTrace(BaseModel):
     id: str = ""
     candidate_id: str
-    agent_type: Literal["investigation", "match_decision", "monitoring"] = "investigation"
+    agent_type: Literal["investigation", "discovery", "match_decision", "monitoring"] = "investigation"
     model: str
     steps: list[TraceStep]
     verdict: AgentVerdict

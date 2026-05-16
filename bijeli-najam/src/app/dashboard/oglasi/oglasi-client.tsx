@@ -1,6 +1,7 @@
 "use client";
 
 import { useMemo, useState } from "react";
+import Link from "next/link";
 import { useRouter } from "next/navigation";
 import { Badge } from "@/components/ui/badge";
 import { Button } from "@/components/ui/button";
@@ -18,12 +19,12 @@ import {
   ArrowsClockwise,
   CheckCircle,
   Flag,
-  MagnifyingGlass,
   Question,
   XCircle,
 } from "@phosphor-icons/react";
 import { cn } from "@/lib/utils";
 import { formatConfidence } from "@/lib/format";
+import { InvestigationTrigger } from "@/components/domain/investigation-trigger";
 
 export type OglasiStatus = "matched" | "flagged" | "inconclusive" | "no_match";
 
@@ -33,6 +34,7 @@ export interface OglasiRow {
   title: string;
   host_name: string;
   neighborhood: string;
+  address: string | null;
   price_per_night: number;
   beds: number;
   guests: number;
@@ -40,6 +42,8 @@ export interface OglasiRow {
   url: string;
   status: OglasiStatus;
   confidence: number | null;
+  matched_registered_id: string | null;
+  matched_registered_name: string | null;
 }
 
 interface Props {
@@ -76,8 +80,6 @@ export function OglasiClient({ candidates, usingMock, error }: Props) {
   const [platform, setPlatform] = useState<string>("all");
   const [statusFilter, setStatusFilter] = useState<"all" | OglasiStatus>("all");
   const [search, setSearch] = useState("");
-  const [busyId, setBusyId] = useState<string | null>(null);
-  const [runError, setRunError] = useState<string | null>(null);
 
   const platforms = useMemo(() => {
     const set = new Set(candidates.map((c) => c.platform));
@@ -110,27 +112,6 @@ export function OglasiClient({ candidates, usingMock, error }: Props) {
   function handleBatch() {
     setBatchLoading(true);
     setTimeout(() => router.push("/dashboard"), 2500);
-  }
-
-  async function runInvestigate(candidateId: string) {
-    setBusyId(candidateId);
-    setRunError(null);
-    try {
-      const res = await fetch("/api/investigate", {
-        method: "POST",
-        headers: { "Content-Type": "application/json" },
-        body: JSON.stringify({ candidate_id: candidateId }),
-      });
-      if (!res.ok) {
-        const body = await res.json().catch(() => ({}));
-        throw new Error(body.error || `HTTP ${res.status}`);
-      }
-      router.refresh();
-    } catch (err) {
-      setRunError((err as Error).message);
-    } finally {
-      setBusyId(null);
-    }
   }
 
   return (
@@ -205,10 +186,6 @@ export function OglasiClient({ candidates, usingMock, error }: Props) {
         </div>
       </div>
 
-      {runError ? (
-        <div className="text-sm text-destructive border rounded p-2">{runError}</div>
-      ) : null}
-
       <div className="rounded-md border">
         <Table>
           <TableHeader>
@@ -251,17 +228,39 @@ export function OglasiClient({ candidates, usingMock, error }: Props) {
                   </TableCell>
                   <TableCell className="font-medium text-sm">{c.title}</TableCell>
                   <TableCell className="text-sm text-muted-foreground">{c.host_name}</TableCell>
-                  <TableCell className="text-sm">{c.neighborhood}</TableCell>
+                  <TableCell className="text-sm">
+                    <div>{c.neighborhood}</div>
+                    {c.address ? (
+                      <div className="text-xs text-muted-foreground">{c.address}</div>
+                    ) : null}
+                  </TableCell>
                   <TableCell className="text-right text-sm font-medium">
                     {c.price_per_night ? `${c.price_per_night} €` : "—"}
                   </TableCell>
                   <TableCell className="text-center text-sm">{c.beds || "—"}</TableCell>
                   <TableCell className="text-center text-sm">{c.guests || "—"}</TableCell>
                   <TableCell>
-                    <Badge variant="outline" className={cn("text-xs gap-1", STATUS_CLASSES[c.status])}>
+                    <Badge
+                      variant="outline"
+                      className={cn("text-xs gap-1 inline-flex flex-wrap items-center", STATUS_CLASSES[c.status])}
+                    >
                       <StatusIcon status={c.status} />
-                      {STATUS_LABEL[c.status]}
-                      {c.confidence != null ? ` · ${formatConfidence(c.confidence)}` : ""}
+                      <span>
+                        {STATUS_LABEL[c.status]}
+                        {c.confidence != null ? ` · ${formatConfidence(c.confidence)}` : ""}
+                      </span>
+                      {c.status === "matched" && c.matched_registered_id && c.matched_registered_name ? (
+                        <>
+                          <span aria-hidden>·</span>
+                          <Link
+                            href={`/dashboard/registrirani/${c.matched_registered_id}`}
+                            className="underline underline-offset-2 hover:no-underline"
+                            onClick={(e) => e.stopPropagation()}
+                          >
+                            {c.matched_registered_name}
+                          </Link>
+                        </>
+                      ) : null}
                     </Badge>
                   </TableCell>
                   <TableCell className="text-right">
@@ -276,16 +275,10 @@ export function OglasiClient({ candidates, usingMock, error }: Props) {
                           <ArrowSquareOut size={14} />
                         </Button>
                       </a>
-                      <Button
-                        size="sm"
-                        variant="outline"
-                        onClick={() => runInvestigate(c.id)}
-                        disabled={busyId === c.id || usingMock}
-                        title={usingMock ? "Nedostupno u mock prikazu" : undefined}
-                      >
-                        <MagnifyingGlass size={14} className="mr-1" />
-                        {busyId === c.id ? "Istraga…" : "Istraži"}
-                      </Button>
+                      <InvestigationTrigger
+                        candidateId={c.id}
+                        candidateTitle={c.title}
+                      />
                     </div>
                   </TableCell>
                 </TableRow>

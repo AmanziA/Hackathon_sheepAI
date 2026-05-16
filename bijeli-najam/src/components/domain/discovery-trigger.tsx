@@ -107,8 +107,9 @@ export function DiscoveryTrigger({ registeredId, unitName }: Props) {
           setOpen(false);
           void load();
         }}
-        registeredId={registeredId}
-        unitName={unitName}
+        mode="discovery"
+        id={registeredId}
+        title={unitName}
       />
     </>
   );
