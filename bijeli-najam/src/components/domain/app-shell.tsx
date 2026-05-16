@@ -39,13 +39,13 @@ export function AppShell({ children }: Props) {
   const dashActive = isActive("/dashboard", true);
 
   return (
-    <div className="min-h-screen flex">
-      <aside className="w-52 border-r bg-background flex flex-col shrink-0">
+    <div className="min-h-screen flex bg-paper">
+      <aside className="w-52 border-r bg-background/85 backdrop-blur-sm flex flex-col shrink-0">
         <Link
           href="/dashboard"
-          className="h-14 flex items-center gap-2.5 px-4 border-b"
+          className="h-14 flex items-center gap-2.5 px-4 border-b group"
         >
-          <Buildings size={18} />
+          <Buildings size={18} className="transition-transform duration-200 group-hover:rotate-[8deg]" />
           <span className="font-semibold text-sm tracking-tight">Bijeli Najam</span>
         </Link>
 
@@ -54,13 +54,16 @@ export function AppShell({ children }: Props) {
             onClick={() => setRunning(true)}
             disabled={running}
             className={cn(
-              "w-full flex items-center gap-3 px-4 py-3 rounded-2xl text-sm font-medium transition-all",
+              "group w-full flex items-center gap-3 px-4 py-3 rounded-2xl text-sm font-medium transition-all duration-200 ease-out",
               running
                 ? "bg-muted text-muted-foreground cursor-not-allowed"
-                : "bg-blue-100 hover:bg-blue-200 text-blue-900 shadow-sm hover:shadow"
+                : "bg-blue-100 hover:bg-blue-200 text-blue-900 shadow-sm hover:shadow-md hover:-translate-y-px active:translate-y-0"
             )}
           >
-            <Intersect size={18} className="shrink-0" />
+            <Intersect
+              size={18}
+              className="shrink-0 transition-transform duration-200 group-hover:rotate-45"
+            />
             Pokreni istragu
           </button>
         </div>
@@ -69,16 +72,20 @@ export function AppShell({ children }: Props) {
           <Link
             href="/dashboard"
             className={cn(
-              "flex items-center gap-2.5 px-3 py-2 rounded-md text-sm transition-colors font-medium",
+              "relative flex items-center gap-2.5 px-3 py-2 rounded-md text-sm transition-all duration-200 ease-out font-medium overflow-hidden",
               dashActive
-                ? "bg-foreground text-background"
-                : "text-muted-foreground hover:text-foreground hover:bg-muted"
+                ? "bg-foreground text-background shadow-sm"
+                : "text-muted-foreground hover:text-foreground hover:bg-muted hover:translate-x-px"
             )}
           >
-            <WarningCircle size={15} weight={dashActive ? "bold" : "regular"} />
+            <WarningCircle
+              size={15}
+              weight={dashActive ? "bold" : "regular"}
+              className="transition-transform duration-200"
+            />
             <span className="flex-1">Za provjeru</span>
             {!dashActive && AUTO_COUNT > 0 && (
-              <span className="bg-destructive text-destructive-foreground text-[10px] font-bold leading-none rounded-full px-1.5 py-0.5">
+              <span className="bg-destructive text-destructive-foreground text-[10px] font-bold leading-none rounded-full px-1.5 py-0.5 transition-transform duration-200 group-hover:scale-110">
                 {AUTO_COUNT}
               </span>
             )}
@@ -171,11 +178,11 @@ function NavItem({
     <Link
       href={href}
       className={cn(
-        "flex items-center gap-2.5 py-2 rounded-md text-sm transition-colors",
+        "flex items-center gap-2.5 py-2 rounded-md text-sm transition-all duration-200 ease-out",
         sub ? "px-4" : "px-3",
         active
-          ? "bg-foreground text-background font-medium"
-          : "text-muted-foreground hover:text-foreground hover:bg-muted"
+          ? "bg-foreground text-background font-medium shadow-sm"
+          : "text-muted-foreground hover:text-foreground hover:bg-muted hover:translate-x-px"
       )}
     >
       <IconComp size={15} weight={weight} />

@@ -16,13 +16,26 @@ import "leaflet/dist/leaflet.css";
 const addressIcon = L.divIcon({
   className: "lookup-address-pin",
   html: `
-    <span style="
-      display:flex;align-items:center;justify-content:center;
-      width:34px;height:34px;border-radius:50%;
-      background:#2563eb;color:white;
-      box-shadow:0 0 0 4px rgba(37,99,235,0.25), 0 4px 10px rgba(0,0,0,0.25);
-      border:2px solid white;font-size:16px;font-weight:600;
-    ">📍</span>`,
+    <span style="position:relative;display:inline-flex;align-items:center;justify-content:center;">
+      <span style="
+        position:absolute;width:34px;height:34px;border-radius:50%;
+        background:rgba(37,99,235,0.18);
+        animation:lookup-pulse 1.8s cubic-bezier(0.66,0,0,1) infinite;
+      "></span>
+      <span style="
+        position:relative;display:flex;align-items:center;justify-content:center;
+        width:18px;height:18px;border-radius:50%;
+        background:#2563eb;color:white;
+        box-shadow:0 0 0 3px rgba(255,255,255,0.95), 0 4px 10px rgba(0,0,0,0.25);
+        border:0;
+      "></span>
+    </span>
+    <style>
+      @keyframes lookup-pulse {
+        0%   { transform: scale(0.5); opacity: 1; }
+        100% { transform: scale(1.4); opacity: 0; }
+      }
+    </style>`,
   iconSize: [34, 34],
   iconAnchor: [17, 17],
 });

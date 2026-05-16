@@ -153,68 +153,104 @@ export function TraceSummary({ trace, steps, confidence }: Props) {
       : "Nedovoljno dokaza za zaključak";
 
   return (
-    <div className="space-y-4">
-      <header className="space-y-1">
-        <div className="flex items-center gap-2 text-xs uppercase tracking-wide text-muted-foreground">
-          <Gavel size={12} />
-          <span>Sažetak istrage</span>
+    <div className="space-y-5">
+      {/* Verdict callout — leads the eye */}
+      <header
+        className={cn(
+          "rounded-sm border p-4 space-y-1.5",
+          flagged
+            ? "bg-destructive/5 border-destructive/20"
+            : trace.final_verdict === "clear"
+              ? "bg-success/5 border-success/20"
+              : "bg-warning/5 border-warning/30"
+        )}
+      >
+        <div className="flex items-center gap-2 text-[11px] uppercase tracking-widest text-muted-foreground">
+          <Gavel size={11} />
+          <span>Zaključak istrage</span>
         </div>
-        <p className="text-sm leading-relaxed">
-          Agent je u {trace.step_count} {trace.step_count === 1 ? "koraku" : "koraka"} provjerio
-          dostupne registre i dokaze. <strong className={cn(flagged ? "text-destructive" : "text-success")}>
+        <div className="flex items-baseline gap-3 flex-wrap">
+          <p className={cn("text-base font-semibold leading-tight", flagged ? "text-destructive" : trace.final_verdict === "clear" ? "text-success" : "text-warning")}>
             {verdictText}
-          </strong>{" "}
-          ({Math.round(confidence * 100)}%).
+          </p>
+          <span className="text-2xl font-bold tabular-nums-tight">
+            {Math.round(confidence * 100)}%
+          </span>
+        </div>
+        <p className="text-xs text-muted-foreground">
+          Agent je u {trace.step_count} {trace.step_count === 1 ? "koraku" : "koraka"} provjerio dostupne izvore podataka.
         </p>
       </header>
 
-      <ul className="space-y-2">
-        {sorted.map((step) => {
+      {/* Steps — numbered, two-line: tool + delta on top, finding below */}
+      <ol className="space-y-3">
+        {sorted.map((step, idx) => {
           const positive = step.confidence_delta > 0;
           const link = sourceLink(step);
           return (
-            <li key={step.id} className="flex items-start gap-3 text-sm">
-              <span
-                className={cn(
-                  "mt-0.5 shrink-0",
-                  positive ? "text-success" : "text-destructive"
-                )}
-                aria-hidden
-              >
-                {positive ? <CheckCircle size={16} weight="fill" /> : <XCircle size={16} weight="fill" />}
-              </span>
-              <div className="flex-1 min-w-0 flex flex-wrap items-baseline gap-x-3 gap-y-1">
-                <span className="flex items-center gap-1.5 text-muted-foreground shrink-0">
-                  {TOOL_ICONS[step.tool_called]}
-                  <span className="text-xs">{TOOL_LABEL[step.tool_called] ?? step.tool_called}</span>
+            <li
+              key={step.id}
+              className="grid grid-cols-[auto_1fr] gap-x-3 text-sm fade-up"
+              style={{ animationDelay: `${idx * 60}ms` }}
+            >
+              {/* Left rail: numbered marker */}
+              <div className="flex flex-col items-center pt-0.5">
+                <span
+                  className={cn(
+                    "flex items-center justify-center w-6 h-6 rounded-full text-[10px] font-bold tabular-nums border-2",
+                    positive
+                      ? "bg-success/10 border-success/40 text-success"
+                      : "bg-destructive/10 border-destructive/40 text-destructive"
+                  )}
+                >
+                  {idx + 1}
                 </span>
-                <span className="text-foreground">{shortFinding(step)}</span>
-                {link ? (
+                {idx < sorted.length - 1 && (
+                  <span className="w-px flex-1 bg-border mt-1" aria-hidden />
+                )}
+              </div>
+
+              {/* Right: content */}
+              <div className="pb-3 space-y-1">
+                <div className="flex items-center gap-2 flex-wrap">
+                  <span className="text-muted-foreground" aria-hidden>
+                    {TOOL_ICONS[step.tool_called]}
+                  </span>
+                  <span className="text-sm font-medium">
+                    {TOOL_LABEL[step.tool_called] ?? step.tool_called}
+                  </span>
+                  <span
+                    className={cn(
+                      "ml-auto text-xs tabular-nums-tight font-mono px-1.5 py-0.5 rounded-sm",
+                      positive
+                        ? "text-success bg-success/10"
+                        : "text-destructive bg-destructive/10"
+                    )}
+                  >
+                    {positive ? "+" : ""}
+                    {Math.round(step.confidence_delta * 100)}%
+                  </span>
+                </div>
+                <p className="text-sm text-foreground/90 leading-relaxed">
+                  {shortFinding(step)}
+                </p>
+                {link && (
                   <a
                     href={link.href}
                     target="_blank"
                     rel="noopener noreferrer"
                     onClick={(e) => e.stopPropagation()}
-                    className="inline-flex items-center gap-1 text-xs text-muted-foreground hover:text-primary hover:underline"
+                    className="inline-flex items-center gap-1 text-[11px] text-muted-foreground hover:text-primary hover:underline"
                   >
-                    <ArrowSquareOut size={11} />
-                    {link.label}
+                    Izvor: {link.label}
+                    <ArrowSquareOut size={10} />
                   </a>
-                ) : null}
-              </div>
-              <span
-                className={cn(
-                  "text-xs tabular-nums font-mono shrink-0",
-                  positive ? "text-success" : "text-destructive"
                 )}
-              >
-                {positive ? "+" : ""}
-                {Math.round(step.confidence_delta * 100)}%
-              </span>
+              </div>
             </li>
           );
         })}
-      </ul>
+      </ol>
 
       <button
         type="button"

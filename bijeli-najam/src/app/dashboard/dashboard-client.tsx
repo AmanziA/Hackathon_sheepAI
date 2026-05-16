@@ -361,7 +361,8 @@ function FlagCard({
         }
       }}
       className={cn(
-        "px-5 py-4 flex gap-4 hover:bg-muted/40 transition-colors cursor-pointer focus:outline-none focus:bg-muted/40",
+        "group relative px-5 py-4 flex gap-4 cursor-pointer focus:outline-none transition-all duration-200 ease-out",
+        "hover:bg-muted/40 hover:pl-[22px] focus:bg-muted/40",
         variant === "auto" ? "border-l-2 border-l-destructive" : "border-l-2 border-l-amber-400"
       )}
     >
@@ -651,7 +652,7 @@ function MonitoringCard({
           onOpen();
         }
       }}
-      className="px-5 py-4 flex gap-4 hover:bg-muted/40 transition-colors border-l-2 border-l-destructive cursor-pointer focus:outline-none focus:bg-muted/40"
+      className="group relative px-5 py-4 flex gap-4 hover:bg-muted/40 hover:pl-[22px] transition-all duration-200 ease-out border-l-2 border-l-destructive cursor-pointer focus:outline-none focus:bg-muted/40"
     >
       <div className="flex-1 min-w-0 space-y-1.5">
         <div className="flex items-center gap-2 flex-wrap">

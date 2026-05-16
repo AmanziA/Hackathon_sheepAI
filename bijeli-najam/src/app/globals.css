@@ -54,18 +54,19 @@
 }
 
 :root {
-  --background: oklch(1 0 0);
+  /* Warm paper-cream background */
+  --background: oklch(0.985 0.005 80);
   --foreground: oklch(0.145 0 0);
   --card: oklch(1 0 0);
   --card-foreground: oklch(0.145 0 0);
   --popover: oklch(1 0 0);
   --popover-foreground: oklch(0.145 0 0);
-  --primary: oklch(0.205 0 0);
+  --primary: oklch(0.18 0 0);
   --primary-foreground: oklch(0.985 0 0);
-  --secondary: oklch(0.97 0 0);
+  --secondary: oklch(0.965 0.005 80);
   --secondary-foreground: oklch(0.205 0 0);
-  --muted: oklch(0.97 0 0);
-  --muted-foreground: oklch(0.556 0 0);
+  --muted: oklch(0.965 0.005 80);
+  --muted-foreground: oklch(0.5 0 0);
   --accent: oklch(0.97 0 0);
   --accent-foreground: oklch(0.205 0 0);
   --destructive: oklch(0.577 0.245 27.325);
@@ -82,7 +83,7 @@
   --chart-3: oklch(0.439 0 0);
   --chart-4: oklch(0.371 0 0);
   --chart-5: oklch(0.269 0 0);
-  --radius: 0.625rem;
+  --radius: 0.125rem;
   --sidebar: oklch(0.985 0 0);
   --sidebar-foreground: oklch(0.145 0 0);
   --sidebar-primary: oklch(0.205 0 0);
@@ -133,8 +134,71 @@
   }
   body {
     @apply bg-background text-foreground;
+    font-feature-settings: "ss01", "cv11";
+    letter-spacing: -0.005em;
   }
   html {
     @apply font-sans;
+  }
+}
+
+@layer utilities {
+  /* Paper texture — warm cream background with a faint grid that recalls
+     architectural drafting paper. Subtle enough to fade into surfaces. */
+  .bg-paper {
+    background-color: oklch(0.985 0.005 80);
+    background-image:
+      radial-gradient(circle at 1px 1px, hsl(0 0% 50% / 0.06) 1px, transparent 0),
+      linear-gradient(180deg, hsl(0 0% 100% / 0.4) 0%, transparent 60%);
+    background-size: 22px 22px, 100% 100%;
+    background-position: 0 0, 0 0;
+  }
+
+  /* Pulsing ring for highlighted markers / pending status indicators */
+  @keyframes pulse-ring {
+    0%   { box-shadow: 0 0 0 0 hsl(217 91% 60% / 0.55); }
+    70%  { box-shadow: 0 0 0 14px hsl(217 91% 60% / 0); }
+    100% { box-shadow: 0 0 0 0 hsl(217 91% 60% / 0); }
+  }
+  .pulse-ring {
+    animation: pulse-ring 1.8s cubic-bezier(0.66, 0, 0, 1) infinite;
+  }
+
+  /* Soft rise hover — used on cards. Pair with transition-all duration-200. */
+  .hover-rise {
+    @apply transition-all duration-200 ease-out;
+  }
+  .hover-rise:hover {
+    transform: translateY(-1px);
+    box-shadow: 0 6px 18px -8px hsl(0 0% 0% / 0.12), 0 2px 4px -2px hsl(0 0% 0% / 0.06);
+  }
+
+  /* Tabular numbers for stat counters */
+  .tabular-nums-tight {
+    font-variant-numeric: tabular-nums;
+    letter-spacing: -0.02em;
+  }
+
+  /* Fade-in from below for content blocks */
+  @keyframes fade-up {
+    from { opacity: 0; transform: translateY(6px); }
+    to   { opacity: 1; transform: translateY(0); }
+  }
+  .fade-up {
+    animation: fade-up 0.32s cubic-bezier(0.22, 1, 0.36, 1) both;
+  }
+
+  /* Shimmer for loading skeletons */
+  @keyframes shimmer {
+    0% { background-position: -200% 0; }
+    100% { background-position: 200% 0; }
+  }
+  .shimmer {
+    background: linear-gradient(90deg,
+      hsl(0 0% 95%) 0%,
+      hsl(0 0% 99%) 50%,
+      hsl(0 0% 95%) 100%);
+    background-size: 200% 100%;
+    animation: shimmer 1.6s linear infinite;
   }
 }
