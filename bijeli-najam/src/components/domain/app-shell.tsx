@@ -86,17 +86,24 @@ export function AppShell({ children }: Props) {
             icon={Pulse}
             active={isActive("/dashboard/monitoring")}
           />
-          <NavItem
-            href="/dashboard/registrirani"
-            label="Registrirani"
-            icon={CheckCircle}
-            active={isActive("/dashboard/registrirani")}
-          />
+
+          <div className="my-3 mx-1 border-t" />
+
+          <p className="px-3 pb-1 text-[10px] font-semibold uppercase tracking-widest text-muted-foreground/50">
+            Izvori podataka
+          </p>
+
           <NavItem
             href="/dashboard/oglasi"
             label="Online oglasi"
             icon={Globe}
             active={isActive("/dashboard/oglasi")}
+          />
+          <NavItem
+            href="/dashboard/registrirani"
+            label="HTZ registar"
+            icon={CheckCircle}
+            active={isActive("/dashboard/registrirani")}
           />
 
           <div className="my-3 mx-1 border-t" />

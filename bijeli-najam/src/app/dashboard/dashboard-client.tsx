@@ -16,7 +16,6 @@ import {
   WarningCircle,
   CheckCircle,
   Eye,
-  FunnelSimple,
   MapPin,
   Bed,
   CurrencyEur,
@@ -31,7 +30,6 @@ import {
   X,
   Lightning,
   Drop,
-  ArrowSquareOut as LinkIcon,
 } from "@phosphor-icons/react";
 import { formatEur } from "@/lib/format";
 import { cn } from "@/lib/utils";
@@ -65,7 +63,7 @@ interface Props {
 
 type Resolution = "reported" | "dismissed";
 
-type FilterTab = "sve" | "auto" | "provjera" | "registrirani";
+type FilterTab = "sve" | "auto" | "provjera" | "registrirani" | "prijavljeni";
 
 export function DashboardClient({ flags, monitoringAlerts = [] }: Props) {
   const [search, setSearch] = useState("");
@@ -105,10 +103,17 @@ export function DashboardClient({ flags, monitoringAlerts = [] }: Props) {
 
   const showFlagSections = activeTab === "sve" || activeTab === "auto" || activeTab === "provjera";
   const showMonitoring = activeTab === "sve" || activeTab === "registrirani";
+  const showReported = activeTab === "prijavljeni";
 
   const autoFlagged = activeTab === "auto" || activeTab === "sve" ? allAutoFlagged : [];
   const needsReview = activeTab === "provjera" || activeTab === "sve" ? allNeedsReview : [];
   const monitoringRows = showMonitoring ? allMonitoring : [];
+
+  const reportedFlags = filtered.filter((f) => resolved[f.id] === "reported");
+  const reportedMonitoring = filteredMonitoring.filter((m) => resolved[m.id] === "reported");
+  const dismissedFlags = filtered.filter((f) => resolved[f.id] === "dismissed");
+  const dismissedMonitoring = filteredMonitoring.filter((m) => resolved[m.id] === "dismissed");
+  const reportedTotal = reportedFlags.length + reportedMonitoring.length;
 
   const selectedFlag = selectedId ? flags.find((f) => f.id === selectedId) : null;
   const selectedMonitoring = selectedMonitoringId
@@ -153,6 +158,7 @@ export function DashboardClient({ flags, monitoringAlerts = [] }: Props) {
             { key: "auto",         label: "Automatski",         count: allAutoFlagged.length },
             { key: "provjera",     label: "Na provjeri",        count: allNeedsReview.length },
             { key: "registrirani", label: "Sumnjivi registrirani", count: allMonitoring.length },
+            { key: "prijavljeni",  label: "Prijavljeni",        count: reportedTotal },
           ] as { key: FilterTab; label: string; count: number }[]).map(({ key, label, count }) => (
             <button
               key={key}
@@ -171,6 +177,7 @@ export function DashboardClient({ flags, monitoringAlerts = [] }: Props) {
                   ? key === "auto" ? "bg-destructive/15 text-destructive"
                   : key === "provjera" ? "bg-amber-100 text-amber-700"
                   : key === "registrirani" ? "bg-destructive/15 text-destructive"
+                  : key === "prijavljeni" ? "bg-success/15 text-success"
                   : "bg-muted text-muted-foreground"
                   : "bg-muted-foreground/15 text-muted-foreground"
               )}>
@@ -182,7 +189,6 @@ export function DashboardClient({ flags, monitoringAlerts = [] }: Props) {
 
         <div className="w-px h-5 bg-border mx-1" />
 
-        <FunnelSimple size={14} className="text-muted-foreground shrink-0" />
         <Input
           placeholder="Pretraži po naslovu, kvartu, domaćinu..."
           value={search}
@@ -190,12 +196,14 @@ export function DashboardClient({ flags, monitoringAlerts = [] }: Props) {
           className="max-w-xs h-8 text-sm"
         />
 
-        <div className="ml-auto flex items-center gap-3 text-xs text-muted-foreground">
-          <span className="flex items-center gap-1.5">
-            <CheckCircle size={12} />
-            {resolvedList.length} riješeno
-          </span>
-        </div>
+        <button
+          type="button"
+          onClick={() => setActiveTab("prijavljeni")}
+          className="ml-auto flex items-center gap-1.5 text-xs text-muted-foreground hover:text-foreground transition-colors"
+        >
+          <CheckCircle size={12} />
+          {reportedTotal} prijavljeno
+        </button>
       </div>
 
       <div className="flex flex-1 overflow-hidden">
@@ -288,51 +296,111 @@ export function DashboardClient({ flags, monitoringAlerts = [] }: Props) {
             </section>
           )}
 
-          {/* RESOLVED */}
-          {(resolvedList.length > 0 || resolvedMonitoring.length > 0) && (
-            <section className="mt-4 opacity-50">
-              <div className="px-5 pt-3 pb-2 flex items-center gap-2 border-t border-b">
-                <CheckCircle size={14} className="text-muted-foreground" />
-                <span className="text-xs font-semibold uppercase tracking-wide text-muted-foreground">
-                  Riješeno
-                </span>
-                <span className="ml-auto text-xs text-muted-foreground">
-                  {resolvedList.length + resolvedMonitoring.length}
-                </span>
-              </div>
-              <div className="divide-y">
-                {resolvedList.map((flag) => (
-                  <div key={flag.id} className="px-5 py-3 flex items-center gap-3">
-                    {resolved[flag.id] === "reported" ? (
-                      <FilePdf size={14} className="text-muted-foreground shrink-0" />
-                    ) : (
-                      <X size={14} className="text-muted-foreground shrink-0" />
-                    )}
-                    <span className="text-sm text-muted-foreground line-through flex-1 truncate">
-                      {flag.candidate_listings?.title}
+          {/* PRIJAVLJENI (dedicated tab) */}
+          {showReported && (
+            <>
+              {reportedTotal === 0 && dismissedFlags.length + dismissedMonitoring.length === 0 && (
+                <div className="flex flex-col items-center justify-center flex-1 gap-3 text-center py-16 px-6">
+                  <FilePdf size={40} className="text-muted-foreground/40" />
+                  <p className="font-medium text-muted-foreground">Još nema prijava</p>
+                  <p className="text-sm text-muted-foreground">
+                    Predmeti koje pošaljete inspektoru bit će ovdje.
+                  </p>
+                </div>
+              )}
+
+              {reportedTotal > 0 && (
+                <section>
+                  <div className="px-5 pt-4 pb-2 flex items-center gap-2 sticky top-0 bg-background z-10 border-b">
+                    <FilePdf size={14} className="text-success" />
+                    <span className="text-xs font-semibold uppercase tracking-wide text-success">
+                      Prijavljeno inspektoru
                     </span>
-                    <span className="text-xs text-muted-foreground">
-                      {resolved[flag.id] === "reported" ? "Prijavljeno" : "Odbačeno"}
+                    <Badge className="ml-auto bg-success/10 text-success border-success/20 text-xs">
+                      {reportedTotal}
+                    </Badge>
+                  </div>
+                  <div className="divide-y">
+                    {reportedFlags.map((flag) => (
+                      <ReportedRow
+                        key={flag.id}
+                        kind="flag"
+                        title={flag.candidate_listings?.title ?? "—"}
+                        meta={flag.candidate_listings?.neighborhood ?? ""}
+                        href={`/dashboard/${flag.id}`}
+                        onUndo={() =>
+                          setResolved((prev) => {
+                            const { [flag.id]: _r, ...rest } = prev;
+                            void _r;
+                            return rest;
+                          })
+                        }
+                      />
+                    ))}
+                    {reportedMonitoring.map((alert) => (
+                      <ReportedRow
+                        key={alert.id}
+                        kind="monitoring"
+                        title={alert.name}
+                        meta={alert.neighborhood ?? ""}
+                        href={`/dashboard/registrirani/${alert.id}`}
+                        onUndo={() =>
+                          setResolved((prev) => {
+                            const { [alert.id]: _r, ...rest } = prev;
+                            void _r;
+                            return rest;
+                          })
+                        }
+                      />
+                    ))}
+                  </div>
+                </section>
+              )}
+
+              {dismissedFlags.length + dismissedMonitoring.length > 0 && (
+                <section className="mt-2 opacity-60">
+                  <div className="px-5 pt-4 pb-2 flex items-center gap-2 border-b">
+                    <X size={14} className="text-muted-foreground" />
+                    <span className="text-xs font-semibold uppercase tracking-wide text-muted-foreground">
+                      Odbačeno
+                    </span>
+                    <span className="ml-auto text-xs text-muted-foreground">
+                      {dismissedFlags.length + dismissedMonitoring.length}
                     </span>
                   </div>
-                ))}
-                {resolvedMonitoring.map((alert) => (
-                  <div key={alert.id} className="px-5 py-3 flex items-center gap-3">
-                    {resolved[alert.id] === "reported" ? (
-                      <FilePdf size={14} className="text-muted-foreground shrink-0" />
-                    ) : (
-                      <X size={14} className="text-muted-foreground shrink-0" />
-                    )}
-                    <span className="text-sm text-muted-foreground line-through flex-1 truncate">
-                      {alert.name}
-                    </span>
-                    <span className="text-xs text-muted-foreground">
-                      {resolved[alert.id] === "reported" ? "Prijavljeno" : "Odbačeno"}
-                    </span>
+                  <div className="divide-y">
+                    {dismissedFlags.map((flag) => (
+                      <div key={flag.id} className="px-5 py-3 flex items-center gap-3">
+                        <X size={14} className="text-muted-foreground shrink-0" />
+                        <span className="text-sm text-muted-foreground line-through flex-1 truncate">
+                          {flag.candidate_listings?.title}
+                        </span>
+                      </div>
+                    ))}
+                    {dismissedMonitoring.map((alert) => (
+                      <div key={alert.id} className="px-5 py-3 flex items-center gap-3">
+                        <X size={14} className="text-muted-foreground shrink-0" />
+                        <span className="text-sm text-muted-foreground line-through flex-1 truncate">
+                          {alert.name}
+                        </span>
+                      </div>
+                    ))}
                   </div>
-                ))}
-              </div>
-            </section>
+                </section>
+              )}
+            </>
+          )}
+
+          {/* Resolved inline (other tabs) — short summary at bottom */}
+          {!showReported && (resolvedList.length > 0 || resolvedMonitoring.length > 0) && (
+            <button
+              type="button"
+              onClick={() => setActiveTab("prijavljeni")}
+              className="mt-4 mx-5 mb-4 px-3 py-2 rounded-md border text-xs text-muted-foreground hover:bg-muted/40 transition-colors text-left flex items-center gap-2"
+            >
+              <CheckCircle size={12} className="text-muted-foreground" />
+              {resolvedList.length + resolvedMonitoring.length} riješeno · klikni za pregled
+            </button>
           )}
         </div>
 
@@ -392,6 +460,45 @@ export function DashboardClient({ flags, monitoringAlerts = [] }: Props) {
 }
 
 /* ─── Flag card ─────────────────────────────────────────────────────────── */
+
+function ReportedRow({
+  kind,
+  title,
+  meta,
+  href,
+  onUndo,
+}: {
+  kind: "flag" | "monitoring";
+  title: string;
+  meta: string;
+  href: string;
+  onUndo: () => void;
+}) {
+  return (
+    <div className="px-5 py-3 flex items-center gap-3">
+      <FilePdf size={14} className="text-success shrink-0" />
+      <div className="flex-1 min-w-0">
+        <a href={href} className="text-sm font-medium hover:underline block truncate">
+          {title}
+        </a>
+        <div className="flex items-center gap-2 text-xs text-muted-foreground">
+          <Badge variant="outline" className="text-[10px] px-1.5 py-0">
+            {kind === "flag" ? "Oglas" : "Registrirani"}
+          </Badge>
+          {meta && <span>{meta}</span>}
+        </div>
+      </div>
+      <Button
+        size="sm"
+        variant="ghost"
+        className="h-7 text-xs text-muted-foreground"
+        onClick={onUndo}
+      >
+        Vrati
+      </Button>
+    </div>
+  );
+}
 
 function FlagCard({
   flag,
