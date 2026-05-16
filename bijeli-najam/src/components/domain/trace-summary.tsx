@@ -13,11 +13,10 @@ import {
   TextAa,
   Lightning,
   Drop,
-  ArrowSquareOut,
   Globe,
   CheckSquare,
   ListChecks,
-  Dot,
+  ArrowSquareOut,
 } from "@phosphor-icons/react";
 import { cn } from "@/lib/utils";
 import type { AgentTrace, TraceStep } from "@/lib/types";
@@ -104,7 +103,7 @@ function shortFinding(step: TraceStep): string {
       return c != null ? `Lokacija pronađena (${Math.round(c * 100)}% sigurno)` : "Lokacija pronađena";
     }
     case "normalize_croatian":
-      return "Normalizirano za usporedbu";
+      return "Normalizirano i ponovno pretraženo";
     case "search_web": {
       const q = (inp.query as string | undefined) ?? "";
       const count = (out.count as number | undefined) ?? (out.results as unknown[] | undefined)?.length ?? 0;
@@ -141,7 +140,7 @@ function shortFinding(step: TraceStep): string {
       return `${m3} m³/mj${ratio ? ` (${ratio.toFixed(1)}× iznad praznog stana)` : ""}`;
     }
     default:
-      return step.updated_hypothesis || "—";
+      return step.updated_hypothesis;
   }
 }
 
@@ -178,10 +177,45 @@ interface Props {
   confidence: number;
 }
 
+type Group = {
+  tool: string;
+  finding: string;
+  link: ReturnType<typeof sourceLink>;
+  count: number;
+  deltaSum: number;
+  firstIndex: number;
+  positive: boolean;
+};
+
+function groupSteps(sorted: TraceStep[]): Group[] {
+  const groups: Group[] = [];
+  for (const step of sorted) {
+    const finding = shortFinding(step);
+    const last = groups[groups.length - 1];
+    if (last && last.tool === step.tool_called && last.finding === finding) {
+      last.count += 1;
+      last.deltaSum += step.confidence_delta;
+      continue;
+    }
+    groups.push({
+      tool: step.tool_called,
+      finding,
+      link: sourceLink(step),
+      count: 1,
+      deltaSum: step.confidence_delta,
+      firstIndex: step.step_index,
+      positive: step.confidence_delta > 0,
+    });
+  }
+  return groups;
+}
+
 export function TraceSummary({ trace, steps, confidence }: Props) {
+  const [showDetails, setShowDetails] = useState(false);
   const [expandedStep, setExpandedStep] = useState<number | null>(null);
 
   const sorted = [...steps].sort((a, b) => a.step_index - b.step_index);
+  const groups = groupSteps(sorted);
   const flagged = trace.final_verdict === "flagged";
   const verdictText = flagged
     ? "Visoka pouzdanost da je objekt neregistriran"
@@ -190,144 +224,133 @@ export function TraceSummary({ trace, steps, confidence }: Props) {
       : "Nedovoljno dokaza za zaključak";
 
   return (
-    <div className="space-y-5">
-      {/* Verdict callout — leads the eye */}
-      <header
-        className={cn(
-          "rounded-sm border p-4 space-y-1.5",
-          flagged
-            ? "bg-destructive/5 border-destructive/20"
-            : trace.final_verdict === "clear"
-              ? "bg-success/5 border-success/20"
-              : "bg-warning/5 border-warning/30"
-        )}
-      >
-        <div className="flex items-center gap-2 text-[11px] uppercase tracking-widest text-muted-foreground">
-          <Gavel size={11} />
-          <span>Zaključak istrage</span>
-        </div>
-        <div className="flex items-baseline gap-3 flex-wrap">
-          <p className={cn("text-base font-semibold leading-tight", flagged ? "text-destructive" : trace.final_verdict === "clear" ? "text-success" : "text-warning")}>
-            {verdictText}
-          </p>
-          <span className="text-2xl font-bold tabular-nums-tight">
-            {Math.round(confidence * 100)}%
-          </span>
-        </div>
-        <p className="text-xs text-muted-foreground">
-          Agent je u {trace.step_count} {trace.step_count === 1 ? "koraku" : "koraka"} provjerio dostupne izvore podataka.
+    <div className="space-y-3">
+      {/* Compact verdict line — no callout box, just inline */}
+      <div className="flex items-baseline gap-3 flex-wrap">
+        <Gavel size={12} className="text-muted-foreground translate-y-px" />
+        <p className={cn("text-sm font-medium", flagged ? "text-destructive" : trace.final_verdict === "clear" ? "text-success" : "text-warning")}>
+          {verdictText}
         </p>
-      </header>
+        <span className="text-sm font-medium tabular-nums text-foreground">
+          {Math.round(confidence * 100)}%
+        </span>
+        <span className="text-xs text-muted-foreground">
+          · {trace.step_count} {trace.step_count === 1 ? "korak" : "koraka"}, {groups.length} {groups.length === 1 ? "jedinstvena provjera" : "jedinstvenih provjera"}
+        </span>
+      </div>
 
-      {/* Steps — numbered with neutral markers, click to expand technical details */}
-      <ol className="space-y-2">
-        {sorted.map((step, idx) => {
-          const open = expandedStep === step.step_index;
-          const link = sourceLink(step);
-          return (
-            <li
-              key={step.id}
-              className="grid grid-cols-[auto_1fr] gap-x-3 text-sm fade-up"
-              style={{ animationDelay: `${idx * 60}ms` }}
+      {/* Steps — dense single-line groups, identical consecutive steps collapsed */}
+      <ol className="rounded-md border divide-y bg-card">
+        {groups.map((g, idx) => (
+          <li key={`${g.firstIndex}-${g.tool}`} className="flex items-center gap-3 px-3 py-2 text-sm">
+            <span className="text-[10px] font-mono tabular-nums text-muted-foreground w-5 text-right shrink-0">
+              {String(idx + 1).padStart(2, "0")}
+            </span>
+            <span className="text-muted-foreground shrink-0" aria-hidden>
+              {TOOL_ICONS[g.tool]}
+            </span>
+            <span className="font-medium shrink-0 min-w-[160px]">
+              {TOOL_LABEL[g.tool] ?? g.tool}
+            </span>
+            <span className="text-muted-foreground truncate flex-1 min-w-0">
+              {g.finding}
+            </span>
+            {g.count > 1 && (
+              <span className="text-[10px] font-mono tabular-nums text-muted-foreground bg-muted/40 px-1.5 py-0.5 rounded-sm shrink-0">
+                ×{g.count}
+              </span>
+            )}
+            {g.link && (
+              <a
+                href={g.link.href}
+                target="_blank"
+                rel="noopener noreferrer"
+                onClick={(e) => e.stopPropagation()}
+                className="text-[11px] text-muted-foreground hover:text-primary inline-flex items-center gap-0.5 shrink-0"
+                aria-label={`Izvor: ${g.link.label}`}
+                title={g.link.label}
+              >
+                <ArrowSquareOut size={11} />
+              </a>
+            )}
+            <span
+              className={cn(
+                "text-[11px] tabular-nums font-mono px-1.5 py-0.5 rounded-sm shrink-0 w-12 text-right",
+                g.positive
+                  ? "text-success bg-success/10"
+                  : g.deltaSum === 0
+                    ? "text-muted-foreground bg-muted/40"
+                    : "text-destructive bg-destructive/10"
+              )}
             >
-              {/* Left rail: numbered marker (neutral) */}
-              <div className="flex flex-col items-center pt-0.5">
-                <span className="flex items-center justify-center w-6 h-6 rounded-full text-[10px] font-bold tabular-nums border-2 border-border bg-muted/40 text-muted-foreground">
-                  {idx + 1}
-                </span>
-                {idx < sorted.length - 1 && (
-                  <span className="w-px flex-1 bg-border mt-1" aria-hidden />
-                )}
-              </div>
+              {g.positive ? "+" : ""}
+              {Math.round(g.deltaSum * 100)}%
+            </span>
+          </li>
+        ))}
+      </ol>
 
-              {/* Right: clickable row + collapsible details */}
-              <div className="pb-2 min-w-0">
+      <button
+        type="button"
+        onClick={() => setShowDetails((v) => !v)}
+        className="flex items-center gap-1.5 text-xs text-muted-foreground hover:text-foreground transition-colors"
+        aria-expanded={showDetails}
+      >
+        {showDetails ? <CaretDown size={12} /> : <CaretRight size={12} />}
+        <span>
+          Tehnički detalji — {sorted.length} {sorted.length === 1 ? "alat" : "alata"}, JSON ulaz/izlaz, model{" "}
+          <code className="font-mono">{trace.model}</code>
+        </span>
+      </button>
+
+      {showDetails && (
+        <div className="space-y-2 border-l-2 border-muted pl-4 ml-1">
+          {sorted.map((step) => {
+            const open = expandedStep === step.step_index;
+            return (
+              <div key={step.id} className="rounded-md border bg-muted/30">
                 <button
                   type="button"
                   onClick={() => setExpandedStep(open ? null : step.step_index)}
-                  className="w-full text-left rounded-sm -mx-1 px-1 py-0.5 hover:bg-muted/40 transition-colors"
+                  className="w-full flex items-center gap-2 px-3 py-2 text-left hover:bg-muted/60 transition-colors"
                   aria-expanded={open}
                 >
-                  <div className="flex items-center gap-2 min-w-0">
-                    <span className="text-muted-foreground shrink-0" aria-hidden>
-                      {TOOL_ICONS[step.tool_called] ?? <Dot size={14} />}
+                  {open ? <CaretDown size={12} /> : <CaretRight size={12} />}
+                  <code className="text-xs font-mono">{step.tool_called}</code>
+                  {step.duration_ms ? (
+                    <span className="text-xs text-muted-foreground ml-auto">
+                      {step.duration_ms}ms
                     </span>
-                    <span className="text-sm font-medium truncate flex-1 min-w-0">
-                      {TOOL_LABEL[step.tool_called] ?? step.tool_called}
-                    </span>
-                    <span className="text-muted-foreground shrink-0" aria-hidden>
-                      {open ? <CaretDown size={12} /> : <CaretRight size={12} />}
-                    </span>
-                  </div>
-                  <p className="mt-0.5 ml-6 text-xs text-muted-foreground leading-snug break-words">
-                    {shortFinding(step)}
-                  </p>
+                  ) : null}
                 </button>
-
-                {link && !open && (
-                  <a
-                    href={link.href}
-                    target="_blank"
-                    rel="noopener noreferrer"
-                    onClick={(e) => e.stopPropagation()}
-                    className="inline-flex items-center gap-1 mt-1 ml-6 text-[11px] text-muted-foreground hover:text-primary hover:underline break-all"
-                  >
-                    {link.label}
-                    <ArrowSquareOut size={10} />
-                  </a>
-                )}
-
                 {open && (
-                  <div className="mt-2 ml-7 rounded-sm border bg-muted/30 p-2 space-y-2">
-                    {step.why && (
-                      <p className="text-xs italic text-muted-foreground">{step.why}</p>
-                    )}
-                    <div className="grid sm:grid-cols-2 gap-2">
+                  <div className="px-3 pb-3 pt-1 space-y-3">
+                    <p className="text-xs text-muted-foreground italic">{step.why}</p>
+                    <div className="grid sm:grid-cols-2 gap-3">
                       <div className="space-y-1">
-                        <p className="text-[10px] font-semibold uppercase tracking-wide text-muted-foreground">
+                        <p className="text-xs font-semibold uppercase tracking-wide text-muted-foreground">
                           Ulaz
                         </p>
-                        <div className="bg-background rounded-sm border px-2 py-1.5">
+                        <div className="bg-background rounded border px-2 py-1.5">
                           <KeyValue data={step.tool_input} />
                         </div>
                       </div>
                       <div className="space-y-1">
-                        <p className="text-[10px] font-semibold uppercase tracking-wide text-muted-foreground">
+                        <p className="text-xs font-semibold uppercase tracking-wide text-muted-foreground">
                           Izlaz
                         </p>
-                        <div className="bg-background rounded-sm border px-2 py-1.5">
+                        <div className="bg-background rounded border px-2 py-1.5">
                           <KeyValue data={step.tool_output} />
                         </div>
                       </div>
                     </div>
-                    {link && (
-                      <a
-                        href={link.href}
-                        target="_blank"
-                        rel="noopener noreferrer"
-                        onClick={(e) => e.stopPropagation()}
-                        className="inline-flex items-center gap-1 text-[11px] text-muted-foreground hover:text-primary hover:underline"
-                      >
-                        Izvor: {link.label}
-                        <ArrowSquareOut size={10} />
-                      </a>
-                    )}
-                    {step.duration_ms ? (
-                      <p className="text-[10px] text-muted-foreground font-mono">
-                        {step.duration_ms}ms
-                      </p>
-                    ) : null}
                   </div>
                 )}
               </div>
-            </li>
-          );
-        })}
-      </ol>
-
-      <p className="text-[10px] text-muted-foreground">
-        Model: <code className="font-mono">{trace.model}</code>
-      </p>
+            );
+          })}
+        </div>
+      )}
     </div>
   );
 }
