@@ -1,0 +1,15 @@
+# Next.js
+bijeli-najam/.next/
+bijeli-najam/node_modules/
+bijeli-najam/.env.local
+bijeli-najam/.env*.local
+
+# Python pipeline
+bijeli-najam-pipeline/.venv/
+bijeli-najam-pipeline/__pycache__/
+bijeli-najam-pipeline/**/__pycache__/
+bijeli-najam-pipeline/.env
+bijeli-najam-pipeline/**/*.pyc
+
+# OS
+.DS_Store
