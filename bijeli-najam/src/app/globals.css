@@ -176,6 +176,18 @@
   }
 }
 
+@layer components {
+  /* Default any plain `border + rounded-*` panel to white card surface so
+     blocks always read as floating on the cream page background. Per-block
+     overrides via explicit bg-* classes still win (e.g. bg-destructive/5,
+     bg-muted). [class~="border"] only matches the bare token, so partial
+     border-* utilities like border-l, border-destructive/40 etc are
+     unaffected. */
+  [class~="border"][class*="rounded"]:not([class*="bg-"]) {
+    background-color: var(--card);
+  }
+}
+
 @layer utilities {
   /* Paper texture — warm cream background with a faint architectural-drafting
      dot grid + an even fainter offset grid line for measured-paper feel. */
