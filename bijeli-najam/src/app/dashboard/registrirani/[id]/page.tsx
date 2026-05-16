@@ -227,23 +227,26 @@ export default async function RegistriraniDetailPage({ params }: Props) {
         </div>
       </header>
 
-      {/* Above-the-fold 2-col band: AI istraga (left, primary) + eVisitor + utility summary (right) */}
-      <div className="grid lg:grid-cols-2 gap-3 items-stretch">
-        <section className="flex flex-col gap-2">
+      {/* Above-the-fold 2-col band: AI istraga (left, primary) + calendar (right) */}
+      <div className="grid lg:grid-cols-2 gap-3 items-start">
+        <section className="space-y-2">
           <h2 className="text-[11px] font-semibold uppercase tracking-wide text-muted-foreground">
             AI istraga online oglasa
           </h2>
-          <div className="flex-1">
-            <DiscoveryTrigger registeredId={unit.id} unitName={unit.name} />
-          </div>
+          <DiscoveryTrigger registeredId={unit.id} unitName={unit.name} />
         </section>
 
-        <section className="flex flex-col gap-2">
-          <h2 className="text-[11px] font-semibold uppercase tracking-wide text-muted-foreground">
-            eVisitor evidencija
+        <section className="space-y-2">
+          <h2 className="text-[11px] font-semibold uppercase tracking-wide text-muted-foreground flex items-center gap-1.5">
+            <CalendarBlank size={12} />
+            Kalendar zauzetosti
           </h2>
-          <div className="flex-1">
-            <EvisitorRecordPanel record={record} expectedBeds={unit.beds} />
+          <div className="rounded-md border p-3">
+            <StaysCalendar
+              occupancyByDay={calendar}
+              unreportedOnline={unreported}
+              daysBack={90}
+            />
           </div>
         </section>
       </div>
@@ -298,19 +301,12 @@ export default async function RegistriraniDetailPage({ params }: Props) {
         </div>
       </section>
 
-      {/* Below-the-fold detail: calendar + recent stays + source */}
+      {/* Below-the-fold detail: eVisitor record + recent stays + source */}
       <section className="space-y-2 pt-2 border-t">
-        <h2 className="text-[11px] font-semibold uppercase tracking-wide text-muted-foreground flex items-center gap-1.5">
-          <CalendarBlank size={12} />
-          Kalendar zauzetosti
+        <h2 className="text-[11px] font-semibold uppercase tracking-wide text-muted-foreground">
+          eVisitor evidencija
         </h2>
-        <div className="rounded-md border p-3">
-          <StaysCalendar
-            occupancyByDay={calendar}
-            unreportedOnline={unreported}
-            daysBack={90}
-          />
-        </div>
+        <EvisitorRecordPanel record={record} expectedBeds={unit.beds} />
       </section>
 
       <section className="space-y-2">

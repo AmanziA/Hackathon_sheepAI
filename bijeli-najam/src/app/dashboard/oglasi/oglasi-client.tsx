@@ -190,80 +190,88 @@ export function OglasiClient({ candidates, usingMock, error }: Props) {
         <Table>
           <TableHeader>
             <TableRow>
-              <TableHead className="w-[100px]">Platforma</TableHead>
-              <TableHead className="w-[300px]">Naziv</TableHead>
-              <TableHead>Domaćin</TableHead>
-              <TableHead>Kvart</TableHead>
-              <TableHead className="text-right">Cijena/noć</TableHead>
-              <TableHead className="text-center">Kreveti</TableHead>
-              <TableHead className="text-center">Gosti</TableHead>
+              <TableHead>Oglas</TableHead>
+              <TableHead className="text-right whitespace-nowrap">Cijena · K/G</TableHead>
               <TableHead>Status</TableHead>
-              <TableHead className="text-right">Akcija</TableHead>
+              <TableHead className="text-right w-[120px]">Akcija</TableHead>
             </TableRow>
           </TableHeader>
           <TableBody>
             {filtered.length === 0 ? (
               <TableRow>
-                <TableCell colSpan={9} className="text-center text-sm text-muted-foreground py-8">
+                <TableCell colSpan={4} className="text-center text-sm text-muted-foreground py-8">
                   Nema oglasa za odabrane filtere.
                 </TableCell>
               </TableRow>
             ) : (
               filtered.map((c) => (
                 <TableRow key={c.id}>
-                  <TableCell>
+                  <TableCell className="py-2 min-w-0">
+                    <div className="flex items-center gap-2 min-w-0">
+                      <Badge
+                        variant="outline"
+                        className={cn(
+                          "text-[10px] uppercase shrink-0",
+                          c.platform === "airbnb"
+                            ? "border-blue-300 text-blue-700 bg-blue-50"
+                            : c.platform === "booking"
+                            ? "border-orange-300 text-orange-700 bg-orange-50"
+                            : "",
+                        )}
+                      >
+                        {c.platform === "airbnb" ? "Airbnb" : c.platform === "booking" ? "Booking" : c.platform}
+                      </Badge>
+                      <span className="font-medium text-sm truncate">{c.title}</span>
+                    </div>
+                    <div className="text-xs text-muted-foreground flex items-center gap-1.5 mt-0.5 flex-wrap">
+                      <span>{c.host_name}</span>
+                      {c.neighborhood && c.neighborhood !== "—" ? (
+                        <>
+                          <span aria-hidden>·</span>
+                          <span>{c.neighborhood}</span>
+                        </>
+                      ) : null}
+                      {c.address ? (
+                        <>
+                          <span aria-hidden>·</span>
+                          <span className="truncate">{c.address}</span>
+                        </>
+                      ) : null}
+                    </div>
+                  </TableCell>
+                  <TableCell className="py-2 text-right whitespace-nowrap">
+                    <div className="text-sm font-medium tabular-nums">
+                      {c.price_per_night ? `${c.price_per_night} €` : "—"}
+                    </div>
+                    <div className="text-xs text-muted-foreground tabular-nums">
+                      {(c.beds || "—") + " / " + (c.guests || "—")}
+                    </div>
+                  </TableCell>
+                  <TableCell className="py-2">
                     <Badge
                       variant="outline"
-                      className={cn(
-                        "text-xs",
-                        c.platform === "airbnb"
-                          ? "border-blue-300 text-blue-700 bg-blue-50"
-                          : c.platform === "booking"
-                          ? "border-orange-300 text-orange-700 bg-orange-50"
-                          : "",
-                      )}
-                    >
-                      {c.platform === "airbnb" ? "Airbnb" : c.platform === "booking" ? "Booking" : c.platform}
-                    </Badge>
-                  </TableCell>
-                  <TableCell className="font-medium text-sm">{c.title}</TableCell>
-                  <TableCell className="text-sm text-muted-foreground">{c.host_name}</TableCell>
-                  <TableCell className="text-sm">
-                    <div>{c.neighborhood}</div>
-                    {c.address ? (
-                      <div className="text-xs text-muted-foreground">{c.address}</div>
-                    ) : null}
-                  </TableCell>
-                  <TableCell className="text-right text-sm font-medium">
-                    {c.price_per_night ? `${c.price_per_night} €` : "—"}
-                  </TableCell>
-                  <TableCell className="text-center text-sm">{c.beds || "—"}</TableCell>
-                  <TableCell className="text-center text-sm">{c.guests || "—"}</TableCell>
-                  <TableCell>
-                    <Badge
-                      variant="outline"
-                      className={cn("text-xs gap-1 inline-flex flex-wrap items-center", STATUS_CLASSES[c.status])}
+                      className={cn("text-xs gap-1 inline-flex items-center", STATUS_CLASSES[c.status])}
                     >
                       <StatusIcon status={c.status} />
-                      <span>
+                      <span className="whitespace-nowrap">
                         {STATUS_LABEL[c.status]}
                         {c.confidence != null ? ` · ${formatConfidence(c.confidence)}` : ""}
                       </span>
-                      {c.status === "matched" && c.matched_registered_id && c.matched_registered_name ? (
-                        <>
-                          <span aria-hidden>·</span>
-                          <Link
-                            href={`/dashboard/registrirani/${c.matched_registered_id}`}
-                            className="underline underline-offset-2 hover:no-underline"
-                            onClick={(e) => e.stopPropagation()}
-                          >
-                            {c.matched_registered_name}
-                          </Link>
-                        </>
-                      ) : null}
                     </Badge>
+                    {c.status === "matched" && c.matched_registered_id && c.matched_registered_name ? (
+                      <div className="text-xs text-muted-foreground mt-0.5 truncate">
+                        →{" "}
+                        <Link
+                          href={`/dashboard/registrirani/${c.matched_registered_id}`}
+                          className="underline underline-offset-2 hover:no-underline hover:text-foreground"
+                          onClick={(e) => e.stopPropagation()}
+                        >
+                          {c.matched_registered_name}
+                        </Link>
+                      </div>
+                    ) : null}
                   </TableCell>
-                  <TableCell className="text-right">
+                  <TableCell className="py-2 text-right">
                     <div className="flex items-center justify-end gap-1">
                       <a
                         href={c.url}

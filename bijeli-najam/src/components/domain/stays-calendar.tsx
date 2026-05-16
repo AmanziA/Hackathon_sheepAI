@@ -46,7 +46,7 @@ export function StaysCalendar({
           ) : null}
         </span>
       </div>
-      <div className="grid grid-cols-[repeat(30,minmax(0,1fr))] gap-[2px] max-w-md">
+      <div className="grid grid-cols-[repeat(15,minmax(0,1fr))] gap-[3px]">
         {days.map((d) => {
           const isUnreported = unreportedOnline?.has(d.iso) ?? false;
           let tone: string;

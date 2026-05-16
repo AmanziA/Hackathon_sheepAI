@@ -3,7 +3,7 @@
 import { useRouter } from "next/navigation";
 import { Badge } from "@/components/ui/badge";
 import { DataTable, type Column } from "@/components/domain/data-table";
-import { CheckCircle, CircleNotch } from "@phosphor-icons/react";
+import { Bed, CheckCircle, CircleNotch, Star } from "@phosphor-icons/react";
 import { formatConfidence } from "@/lib/format";
 
 export type LatestTrace = {
@@ -74,76 +74,61 @@ function formatAddress(u: RegisteredUnit) {
 
 const columns: Column<RegisteredUnit>[] = [
   {
-    key: "name",
-    label: "Naziv",
-    accessor: (u) => u.name,
+    key: "objekt",
+    label: "Objekt",
+    accessor: (u) => u.name ?? "",
     sortable: true,
     filterable: true,
-    width: "w-[280px]",
+    cellClassName: "py-2 min-w-0",
     render: (u) => (
-      <div className="flex items-center gap-2">
-        <CheckCircle size={14} className="text-[hsl(var(--success))] shrink-0" />
-        <span className="font-medium">{u.name ?? "—"}</span>
+      <div className="min-w-0">
+        <div className="flex items-center gap-2 min-w-0">
+          <CheckCircle
+            size={14}
+            className="text-[hsl(var(--success))] shrink-0"
+            weight="fill"
+          />
+          <span className="font-medium text-sm truncate">{u.name ?? "—"}</span>
+        </div>
+        <div className="text-xs text-muted-foreground flex items-center gap-1.5 mt-0.5 flex-wrap">
+          {u.owner ? <span className="truncate">{u.owner}</span> : null}
+          {u.owner && (u.neighborhood || formatAddress(u) !== "—") ? (
+            <span aria-hidden>·</span>
+          ) : null}
+          {u.neighborhood ? <span>{u.neighborhood}</span> : null}
+          {u.neighborhood && formatAddress(u) !== "—" ? <span aria-hidden>·</span> : null}
+          <span className="truncate">{formatAddress(u)}</span>
+        </div>
       </div>
     ),
   },
   {
-    key: "owner",
-    label: "Vlasnik",
-    accessor: (u) => u.owner,
+    key: "detalji",
+    label: "K / Z",
+    accessor: (u) => u.beds ?? 0,
     sortable: true,
-    filterable: true,
-    cellClassName: "text-sm text-muted-foreground",
-  },
-  {
-    key: "neighborhood",
-    label: "Kvart",
-    accessor: (u) => u.neighborhood,
-    sortable: true,
-    filterable: true,
-    cellClassName: "text-sm",
-  },
-  {
-    key: "address",
-    label: "Adresa",
-    accessor: (u) => formatAddress(u),
-    sortable: true,
-    filterable: true,
-    cellClassName: "text-sm text-muted-foreground",
-  },
-  {
-    key: "beds",
-    label: "Kreveti",
-    accessor: (u) => u.beds,
-    sortable: true,
-    filterable: true,
-    align: "center",
-    cellClassName: "text-sm",
-  },
-  {
-    key: "category",
-    label: "Kategorija",
-    accessor: (u) => u.category,
-    sortable: true,
-    filterable: true,
-    render: (u) =>
-      u.category ? (
-        <Badge variant="outline" className="text-xs">
-          {u.category}
-        </Badge>
-      ) : (
-        "—"
-      ),
-  },
-  {
-    key: "stars",
-    label: "Zvjezdice",
-    accessor: (u) => u.stars,
-    sortable: true,
-    filterable: true,
-    align: "center",
-    cellClassName: "text-sm",
-    render: (u) => (u.stars != null ? u.stars : "—"),
+    filterable: false,
+    align: "right",
+    cellClassName: "py-2 text-right whitespace-nowrap",
+    render: (u) => (
+      <div className="text-right">
+        <div className="text-sm tabular-nums flex items-center justify-end gap-2">
+          <span className="inline-flex items-center gap-1 text-muted-foreground">
+            <Bed size={12} />
+            {u.beds ?? "—"}
+          </span>
+          <span className="inline-flex items-center gap-1 text-muted-foreground">
+            <Star size={12} weight="fill" className="text-warning" />
+            {u.stars ?? "—"}
+          </span>
+        </div>
+        {u.category ? (
+          <div className="text-xs text-muted-foreground mt-0.5 truncate">
+            {u.category}
+          </div>
+        ) : null}
+      </div>
+    ),
   },
   {
     key: "ai_status",
@@ -151,7 +136,18 @@ const columns: Column<RegisteredUnit>[] = [
     accessor: (u) => aiStatusRank(u),
     sortable: true,
     filterable: false,
-    render: (u) => <AiStatusBadge trace={u.latest_trace ?? null} />,
+    cellClassName: "py-2",
+    render: (u) => (
+      <div>
+        <AiStatusBadge trace={u.latest_trace ?? null} />
+        {u.latest_trace?.match_count && u.latest_trace.match_count > 0 ? (
+          <div className="text-xs text-muted-foreground mt-0.5">
+            {u.latest_trace.match_count}{" "}
+            {u.latest_trace.match_count === 1 ? "podudaranje" : "podudaranja"}
+          </div>
+        ) : null}
+      </div>
+    ),
   },
 ];
 
@@ -162,7 +158,7 @@ export function RegistriraniClient({ rows }: { rows: RegisteredUnit[] }) {
       rows={rows}
       columns={columns}
       rowKey={(u) => u.id}
-      searchPlaceholder="Pretraži po nazivu, vlasniku, kvartu…"
+      searchPlaceholder="Pretraži po nazivu, vlasniku, adresi…"
       onRowClick={(u) => router.push(`/dashboard/registrirani/${u.id}`)}
     />
   );

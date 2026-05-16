@@ -300,10 +300,10 @@ export function DiscoveryDrawer({ open, onClose, mode, id, title }: Props) {
   return (
     <Sheet open={open} onOpenChange={(o) => !o && onClose()}>
       <SheetContent className="sm:max-w-2xl overflow-y-auto">
-        <SheetHeader>
-          <SheetTitle className="flex items-center justify-between gap-3">
-            <span className="truncate">{copy.header}: {title ?? "—"}</span>
-            <Button size="sm" onClick={runAgent} disabled={running}>
+        <SheetHeader className="pr-10">
+          <SheetTitle className="space-y-2">
+            <span className="block truncate pr-2">{copy.header}: {title ?? "—"}</span>
+            <Button size="sm" onClick={runAgent} disabled={running} className="font-medium">
               <MagnifyingGlass size={14} className="mr-1" />
               {running ? "Pretraživanje…" : trace ? "Pokreni ponovno" : "Pokreni"}
             </Button>
@@ -325,50 +325,50 @@ export function DiscoveryDrawer({ open, onClose, mode, id, title }: Props) {
             </div>
           ) : (
             <>
-              <div className="flex items-center gap-2 text-sm">
-                <span className="font-medium">Status:</span>
-                {verdictBadge(trace.final_verdict)}
-                <span className="text-xs text-muted-foreground ml-auto">
-                  {trace.step_count} {trace.step_count === 1 ? "korak" : "koraka"}
-                </span>
-              </div>
-
+              {/* Single status block — verdict banner + step count, no duplicate rows */}
               {trace.final_verdict !== "running" && matches.length > 0 ? (
                 <div className="border-l-4 border-emerald-500 bg-emerald-50 rounded p-3 text-sm">
-                  <div className="font-semibold mb-1">
+                  <div className="font-semibold">
                     {copy.foundBanner(matches.length)}
                     {trace.final_confidence > 0
                       ? ` (pouzdanost ${formatConfidence(trace.final_confidence)})`
                       : ""}
                     .
                   </div>
+                  <div className="text-xs text-muted-foreground mt-0.5">
+                    {trace.step_count} {trace.step_count === 1 ? "korak" : "koraka"}
+                  </div>
                 </div>
               ) : trace.final_verdict === copy.emptyVerdictLabel ? (
                 <div className="border-l-4 border-slate-400 bg-slate-50 rounded p-3 text-sm">
-                  <div className="font-semibold mb-1">{copy.emptyVerdictBanner}</div>
-                  <div className="text-xs text-muted-foreground">{copy.emptyVerdictHint}</div>
+                  <div className="font-semibold">{copy.emptyVerdictBanner}</div>
+                  <div className="text-xs text-muted-foreground mt-0.5">{copy.emptyVerdictHint}</div>
+                  <div className="text-xs text-muted-foreground mt-1">
+                    {trace.step_count} {trace.step_count === 1 ? "korak" : "koraka"}
+                  </div>
                 </div>
               ) : trace.final_verdict === "error" ? (
                 <div className="border-l-4 border-red-500 bg-red-50 rounded p-3 text-sm">
-                  <div className="font-semibold mb-1">Istraga je prekinuta zbog greške.</div>
-                  <div className="text-xs text-muted-foreground">
+                  <div className="font-semibold">Istraga je prekinuta zbog greške.</div>
+                  <div className="text-xs text-muted-foreground mt-0.5">
                     Pokušajte ponovno; ako greška ostane, provjerite ZAI_API_KEY i FIRECRAWL_API_KEY.
                   </div>
                 </div>
-              ) : null}
-
-              <div className="space-y-2">
+              ) : (
                 <div className="flex items-center gap-2 text-sm">
-                  <span className="font-medium">{copy.matchesLabel}:</span>
-                  <Badge variant="secondary">{matches.length}</Badge>
+                  {verdictBadge(trace.final_verdict)}
+                  <span className="text-xs text-muted-foreground ml-auto">
+                    {trace.step_count} {trace.step_count === 1 ? "korak" : "koraka"}
+                  </span>
                 </div>
-                {matches.length === 0 ? (
-                  <div className="text-xs text-muted-foreground">
-                    {trace.final_verdict === "running"
-                      ? "Agent još pretražuje…"
-                      : "Nema podudaranja u zadnjem pokretanju."}
+              )}
+
+              {matches.length > 0 ? (
+                <div className="space-y-2">
+                  <div className="flex items-center gap-2 text-sm">
+                    <span className="font-medium">{copy.matchesLabel}</span>
+                    <Badge variant="secondary">{matches.length}</Badge>
                   </div>
-                ) : (
                   <ul className="space-y-2">
                     {matches
                       .slice()
@@ -433,8 +433,8 @@ export function DiscoveryDrawer({ open, onClose, mode, id, title }: Props) {
                         ),
                       )}
                   </ul>
-                )}
-              </div>
+                </div>
+              ) : null}
 
               <TraceSummary trace={trace} steps={steps} confidence={trace.final_confidence} />
 
