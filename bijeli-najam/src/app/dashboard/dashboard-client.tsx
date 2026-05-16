@@ -160,30 +160,32 @@ export function DashboardClient({ flags, monitoringAlerts = [] }: Props) {
       </div>
 
       <div className="flex-1 overflow-y-auto">
-        {items.length === 0 ? (
-          <div className="flex flex-col items-center justify-center gap-3 text-center py-20 px-6">
-            <CheckCircle size={40} className="text-muted-foreground/40" />
-            <p className="font-medium text-muted-foreground">Nema predmeta za provjeru</p>
-            <p className="text-sm text-muted-foreground">
-              Pokušajte drukčiji filter ili pretragu.
-            </p>
-          </div>
-        ) : (
-          <div className="divide-y">
-            {items.map((it) =>
-              it.kind === "monitoring" ? (
-                <MonitoringRow key={it.id} alert={it.alert} onOpen={() => openItem(it)} />
-              ) : (
-                <FlagRow
-                  key={it.id}
-                  flag={it.flag}
-                  variant={it.kind}
-                  onOpen={() => openItem(it)}
-                />
-              )
-            )}
-          </div>
-        )}
+        <div className="px-6 py-4">
+          {items.length === 0 ? (
+            <div className="rounded-lg border flex flex-col items-center justify-center gap-3 text-center py-20 px-6">
+              <CheckCircle size={40} className="text-muted-foreground/40" />
+              <p className="font-medium text-muted-foreground">Nema predmeta za provjeru</p>
+              <p className="text-sm text-muted-foreground">
+                Pokušajte drukčiji filter ili pretragu.
+              </p>
+            </div>
+          ) : (
+            <div className="rounded-lg border divide-y overflow-hidden">
+              {items.map((it) =>
+                it.kind === "monitoring" ? (
+                  <MonitoringRow key={it.id} alert={it.alert} onOpen={() => openItem(it)} />
+                ) : (
+                  <FlagRow
+                    key={it.id}
+                    flag={it.flag}
+                    variant={it.kind}
+                    onOpen={() => openItem(it)}
+                  />
+                )
+              )}
+            </div>
+          )}
+        </div>
       </div>
     </div>
   );
@@ -216,7 +218,6 @@ function FlagRow({
         variant === "auto" ? "border-l-destructive" : "border-l-[var(--brand-orange-500)]"
       )}
     >
-      <ConfidenceBadge score={flag.confidence_unregistered} size="sm" />
       <div className="flex-1 min-w-0 space-y-0.5">
         <div className="flex items-center gap-2 flex-wrap">
           <p className="text-sm font-medium truncate">{listing?.title ?? "—"}</p>
@@ -242,6 +243,7 @@ function FlagRow({
           )}
         </div>
       </div>
+      <ConfidenceBadge score={flag.confidence_unregistered} size="sm" />
     </div>
   );
 }
@@ -267,9 +269,6 @@ function MonitoringRow({
       }}
       className="group px-6 py-4 flex items-center gap-4 cursor-pointer transition-colors duration-150 hover:bg-black/5 focus:outline-none focus:bg-black/5 border-l-2 border-l-destructive"
     >
-      <Badge className="bg-destructive/10 text-destructive border-destructive/20 text-xs shrink-0">
-        {meta.label}
-      </Badge>
       <div className="flex-1 min-w-0 space-y-0.5">
         <div className="flex items-center gap-2 flex-wrap">
           <p className="text-sm font-medium truncate">{alert.name}</p>
@@ -295,6 +294,9 @@ function MonitoringRow({
           </span>
         </div>
       </div>
+      <Badge className="bg-destructive/10 text-destructive border-destructive/20 text-xs shrink-0">
+        {meta.label}
+      </Badge>
     </div>
   );
 }

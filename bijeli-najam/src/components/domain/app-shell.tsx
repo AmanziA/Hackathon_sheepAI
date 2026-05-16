@@ -15,10 +15,9 @@ import {
   type IconWeight,
 } from "@phosphor-icons/react";
 import { LogoMark } from "@/components/domain/logo-mark";
-import { useMemo, useState } from "react";
+import { useEffect, useMemo, useState } from "react";
 import { cn } from "@/lib/utils";
 import { MOCK_FLAGS } from "@/lib/mock-data";
-import { DEMO_MONITORING_ALERTS } from "@/lib/monitoring-demo";
 import { useResolved } from "@/lib/resolved-store";
 import { InvestigationOverlay } from "@/components/domain/investigation-overlay";
 import { CommandPalette } from "@/components/domain/command-palette";
@@ -28,17 +27,35 @@ interface Props {
 }
 
 const TOTAL_CANDIDATES = MOCK_FLAGS.length;
-const TOTAL_TODO = MOCK_FLAGS.length + DEMO_MONITORING_ALERTS.length;
 
 export function AppShell({ children }: Props) {
   const pathname = usePathname();
   const [running, setRunning] = useState(false);
   const { items: resolvedItems } = useResolved();
+  const [queueTotal, setQueueTotal] = useState<number | null>(null);
+
+  // Pull the real queue size from the server so the sidebar matches the
+  // /dashboard list (which queries Supabase + computed monitoring reds).
+  useEffect(() => {
+    let cancelled = false;
+    fetch("/api/queue-count", { cache: "no-store" })
+      .then((r) => r.json())
+      .then((d: { total: number }) => {
+        if (!cancelled) setQueueTotal(d.total);
+      })
+      .catch(() => {
+        if (!cancelled) setQueueTotal(null);
+      });
+    return () => {
+      cancelled = true;
+    };
+  }, [pathname]);
 
   const todoCount = useMemo(() => {
+    if (queueTotal == null) return null;
     const resolvedIds = new Set(Object.keys(resolvedItems));
-    return TOTAL_TODO - resolvedIds.size;
-  }, [resolvedItems]);
+    return Math.max(0, queueTotal - resolvedIds.size);
+  }, [resolvedItems, queueTotal]);
 
   function isActive(href: string, exact = false) {
     if (exact) return pathname === href;
@@ -93,7 +110,7 @@ export function AppShell({ children }: Props) {
               className="transition-transform duration-200"
             />
             <span className="flex-1">Za provjeru</span>
-            {todoCount > 0 && (
+            {todoCount != null && todoCount > 0 && (
               <span
                 className={cn(
                   "text-[10px] font-semibold tabular-nums leading-none rounded-full px-1.5 py-0.5 transition-transform duration-200",

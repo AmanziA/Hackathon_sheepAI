@@ -81,11 +81,6 @@ export function OglasiClient({ candidates, usingMock, error }: Props) {
   const [statusFilter, setStatusFilter] = useState<"all" | OglasiStatus>("all");
   const [search, setSearch] = useState("");
 
-  const platforms = useMemo(() => {
-    const set = new Set(candidates.map((c) => c.platform));
-    return ["all", ...Array.from(set)];
-  }, [candidates]);
-
   const filtered = useMemo(() => {
     const s = search.trim().toLowerCase();
     return candidates.filter((c) => {
@@ -99,6 +94,7 @@ export function OglasiClient({ candidates, usingMock, error }: Props) {
       );
     });
   }, [candidates, platform, statusFilter, search]);
+  void setPlatform; void setStatusFilter; // filters parked behind the top-bar badges
 
   const counts = useMemo(() => {
     const c = { total: candidates.length, matched: 0, flagged: 0, inconclusive: 0, no_match: 0 } as Record<string, number>;
@@ -159,31 +155,9 @@ export function OglasiClient({ candidates, usingMock, error }: Props) {
           onChange={(e) => setSearch(e.target.value)}
           className="max-w-sm"
         />
-        <div className="flex items-center gap-1">
-          {platforms.map((p) => (
-            <Button
-              key={p}
-              size="sm"
-              variant={platform === p ? "default" : "outline"}
-              onClick={() => setPlatform(p)}
-            >
-              {p}
-            </Button>
-          ))}
-        </div>
-        <div className="flex items-center gap-1">
-          {(["all", "matched", "flagged", "inconclusive", "no_match"] as const).map((s) => (
-            <Button
-              key={s}
-              size="sm"
-              variant={statusFilter === s ? "default" : "outline"}
-              onClick={() => setStatusFilter(s)}
-            >
-              {s === "all" ? "all" : STATUS_LABEL[s as OglasiStatus]}
-              {s !== "all" ? ` (${counts[s]})` : ""}
-            </Button>
-          ))}
-        </div>
+        <span className="text-xs text-muted-foreground tabular-nums">
+          {filtered.length} / {counts.total}
+        </span>
       </div>
 
       <div className="rounded-lg border">
@@ -204,13 +178,23 @@ export function OglasiClient({ candidates, usingMock, error }: Props) {
               </TableRow>
             ) : (
               filtered.map((c) => (
-                <TableRow key={c.id}>
+                <TableRow
+                  key={c.id}
+                  onClick={() => {
+                    if (c.matched_registered_id) {
+                      router.push(`/dashboard/registrirani/${c.matched_registered_id}`);
+                    } else {
+                      window.open(c.url, "_blank", "noopener,noreferrer");
+                    }
+                  }}
+                  className="cursor-pointer"
+                >
                   <TableCell className="py-2 min-w-0">
                     <div className="flex items-center gap-2 min-w-0">
                       <Badge
                         variant="outline"
                         className={cn(
-                          "text-[10px] uppercase shrink-0",
+                          "text-[10px] shrink-0",
                           c.platform === "airbnb"
                             ? "border-blue-300 text-blue-700 bg-blue-50"
                             : c.platform === "booking"
@@ -263,7 +247,7 @@ export function OglasiClient({ candidates, usingMock, error }: Props) {
                     ) : null}
                   </TableCell>
                   <TableCell className="py-2 text-right">
-                    <div className="flex items-center justify-end gap-1">
+                    <div className="flex items-center justify-end gap-1" onClick={(e) => e.stopPropagation()}>
                       <a
                         href={c.url}
                         target="_blank"
