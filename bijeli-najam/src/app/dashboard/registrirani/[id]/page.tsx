@@ -24,6 +24,7 @@ import {
   evisitorFor,
   staysFor,
   occupancyByDay,
+  unreportedOnlineDays,
   hepFor,
   vodovodFor,
   monitoringStatusFor,
@@ -130,6 +131,19 @@ export default async function RegistriraniDetailPage({ params }: Props) {
     : baseRecord;
   const stays = staysFor({ id: unit.id });
   const calendar = occupancyByDay(stays, 90);
+
+  // Count how many online listings the AI agent has matched to this unit.
+  // Only units with at least one matched candidate get red discrepancy cells.
+  const { count: matchedListingCount } = await supabase
+    .from("entity_links")
+    .select("id", { count: "exact", head: true })
+    .eq("registered_id", unit.id)
+    .eq("verdict", "matched");
+
+  const unreported = unreportedOnlineDays(
+    { id: unit.id, name: unit.name, beds: unit.beds, category: unit.category },
+    { daysBack: 90, matchedListingCount: matchedListingCount ?? 0 },
+  );
   const baseHep = hepFor({ id: unit.id });
   const baseVod = vodovodFor({ id: unit.id });
   const hep: UtilityReading = demoAlert
@@ -156,160 +170,155 @@ export default async function RegistriraniDetailPage({ params }: Props) {
   const monitoringMeta = STATUS_BADGE[monitoring.kind];
 
   return (
-    <div className="max-w-3xl mx-auto px-6 py-10 space-y-8">
+    <div className="max-w-5xl mx-auto px-6 py-5 space-y-4">
       <BackLink fallback="/dashboard/registrirani" label="← Natrag" />
 
-      <header className="space-y-3">
-        <div className="flex items-start justify-between gap-4">
-          <div className="space-y-1">
-            <div className="flex items-center gap-2">
-              <CheckCircle size={18} weight="fill" className="text-success" />
-              <h1 className="text-2xl font-semibold tracking-tight">{unit.name ?? "—"}</h1>
-            </div>
-            <p className="text-sm text-muted-foreground">Registrirani objekt · HTZ snimak</p>
-          </div>
-          <div className="flex flex-col items-end gap-1.5">
+      {/* Compact header — title + chips + address in two tight rows */}
+      <header className="space-y-1.5">
+        <div className="flex items-start justify-between gap-3 flex-wrap">
+          <div className="flex items-center gap-2 min-w-0">
+            <CheckCircle size={16} weight="fill" className="text-success shrink-0" />
+            <h1 className="text-xl font-semibold tracking-tight truncate">{unit.name ?? "—"}</h1>
             {unit.category && (
-              <Badge variant="outline" className="text-sm">
+              <Badge variant="outline" className="text-xs">
                 {unit.category}
               </Badge>
             )}
-            <Badge variant="outline" className={cn("text-xs", monitoringMeta.cls)}>
-              {monitoringMeta.label}
-            </Badge>
           </div>
+          <Badge variant="outline" className={cn("text-xs", monitoringMeta.cls)}>
+            {monitoringMeta.label}
+          </Badge>
         </div>
 
-        <div className="flex flex-wrap items-center gap-x-5 gap-y-2 text-sm text-muted-foreground">
+        <div className="flex flex-wrap items-center gap-x-4 gap-y-1 text-xs text-muted-foreground">
+          <span className="flex items-center gap-1">
+            <MapPin size={12} />
+            {formatAddress(unit)}
+            {unit.neighborhood ? ` · ${unit.neighborhood}` : ""}
+          </span>
           {unit.owner && (
-            <span className="flex items-center gap-1.5">
-              <User size={14} />
+            <span className="flex items-center gap-1">
+              <User size={12} />
               {unit.owner}
             </span>
           )}
-          {unit.neighborhood && (
-            <span className="flex items-center gap-1.5">
-              <MapPin size={14} />
-              {unit.neighborhood}, Split
-            </span>
-          )}
           {unit.beds != null && (
-            <span className="flex items-center gap-1.5">
-              <Bed size={14} />
+            <span className="flex items-center gap-1">
+              <Bed size={12} />
               {unit.beds} kreveta
             </span>
           )}
           {unit.stars != null && (
-            <span className="flex items-center gap-1.5">
-              <Star size={14} weight="fill" className="text-warning" />
+            <span className="flex items-center gap-1">
+              <Star size={12} weight="fill" className="text-warning" />
               {unit.stars}
             </span>
           )}
         </div>
-
-        <p className="text-sm">{formatAddress(unit)}</p>
       </header>
 
-      <Separator />
+      {/* Above-the-fold 2-col band: AI istraga (left, primary) + eVisitor + utility summary (right) */}
+      <div className="grid lg:grid-cols-2 gap-3 items-stretch">
+        <section className="flex flex-col gap-2">
+          <h2 className="text-[11px] font-semibold uppercase tracking-wide text-muted-foreground">
+            AI istraga online oglasa
+          </h2>
+          <div className="flex-1">
+            <DiscoveryTrigger registeredId={unit.id} unitName={unit.name} />
+          </div>
+        </section>
 
-      <section className="space-y-3">
-        <h2 className="text-sm font-semibold uppercase tracking-wide text-muted-foreground">
-          eVisitor evidencija
-        </h2>
-        <EvisitorRecordPanel record={record} expectedBeds={unit.beds} />
-      </section>
+        <section className="flex flex-col gap-2">
+          <h2 className="text-[11px] font-semibold uppercase tracking-wide text-muted-foreground">
+            eVisitor evidencija
+          </h2>
+          <div className="flex-1">
+            <EvisitorRecordPanel record={record} expectedBeds={unit.beds} />
+          </div>
+        </section>
+      </div>
 
-      <section className="space-y-3">
-        <h2 className="text-sm font-semibold uppercase tracking-wide text-muted-foreground flex items-center gap-1.5">
-          <CalendarBlank size={14} />
-          Kalendar zauzetosti
+      {/* Compact utility row */}
+      <section className="space-y-1.5">
+        <h2 className="text-[11px] font-semibold uppercase tracking-wide text-muted-foreground">
+          Komunalna provjera — {monitoring.kind === "empty_silent" ? "stan miruje" : "live podaci"}
         </h2>
-        <div className="rounded-lg border p-4">
-          <StaysCalendar occupancyByDay={calendar} daysBack={90} />
+        <p className="text-xs text-muted-foreground">{monitoring.reason}</p>
+        <div className="grid sm:grid-cols-2 gap-2">
+          <div className="rounded-md border px-3 py-2 flex items-center gap-3">
+            <Lightning size={14} className="text-warning shrink-0" />
+            <div className="flex-1 min-w-0">
+              <div className="text-[10px] uppercase tracking-wide text-muted-foreground">HEP struja</div>
+              <div className="text-sm tabular-nums">
+                <span className="font-semibold">{hep.avg_per_period}</span>
+                <span className="text-xs text-muted-foreground"> kWh/dan</span>
+                <span className="text-xs text-muted-foreground"> · {hep.occupancy_ratio.toFixed(1)}× baseline</span>
+              </div>
+            </div>
+            <a
+              href="https://mojracun.hep.hr"
+              target="_blank"
+              rel="noopener noreferrer"
+              className="text-muted-foreground hover:text-primary shrink-0"
+              aria-label="mojracun.hep.hr"
+            >
+              <ArrowSquareOut size={12} />
+            </a>
+          </div>
+          <div className="rounded-md border px-3 py-2 flex items-center gap-3">
+            <Drop size={14} className="text-primary shrink-0" />
+            <div className="flex-1 min-w-0">
+              <div className="text-[10px] uppercase tracking-wide text-muted-foreground">Vodovod</div>
+              <div className="text-sm tabular-nums">
+                <span className="font-semibold">{vodovod.avg_per_period}</span>
+                <span className="text-xs text-muted-foreground"> m³/mj</span>
+                <span className="text-xs text-muted-foreground"> · {vodovod.occupancy_ratio.toFixed(1)}× baseline</span>
+              </div>
+            </div>
+            <a
+              href="https://www.vik-split.hr"
+              target="_blank"
+              rel="noopener noreferrer"
+              className="text-muted-foreground hover:text-primary shrink-0"
+              aria-label="vik-split.hr"
+            >
+              <ArrowSquareOut size={12} />
+            </a>
+          </div>
         </div>
       </section>
 
-      <section className="space-y-3">
-        <h2 className="text-sm font-semibold uppercase tracking-wide text-muted-foreground flex items-center gap-1.5">
-          <ListBullets size={14} />
+      {/* Below-the-fold detail: calendar + recent stays + source */}
+      <section className="space-y-2 pt-2 border-t">
+        <h2 className="text-[11px] font-semibold uppercase tracking-wide text-muted-foreground flex items-center gap-1.5">
+          <CalendarBlank size={12} />
+          Kalendar zauzetosti
+        </h2>
+        <div className="rounded-md border p-3">
+          <StaysCalendar
+            occupancyByDay={calendar}
+            unreportedOnline={unreported}
+            daysBack={90}
+          />
+        </div>
+      </section>
+
+      <section className="space-y-2">
+        <h2 className="text-[11px] font-semibold uppercase tracking-wide text-muted-foreground flex items-center gap-1.5">
+          <ListBullets size={12} />
           Posljednje prijave noćenja
         </h2>
         <RecentStaysTable stays={stays} limit={10} />
       </section>
 
-      <Separator />
-
-      <section className="space-y-3">
-        <h2 className="text-sm font-semibold uppercase tracking-wide text-muted-foreground">
-          Komunalna provjera ({monitoring.kind === "empty_silent" ? "stan miruje" : "live podaci"})
-        </h2>
-        <p className="text-sm text-muted-foreground">{monitoring.reason}</p>
-        <div className="grid sm:grid-cols-2 gap-3">
-          <div className="rounded-lg border p-4 space-y-1">
-            <div className="flex items-center gap-2 text-sm font-semibold">
-              <Lightning size={14} className="text-warning" />
-              HEP — struja
-            </div>
-            <p className="text-lg font-semibold tabular-nums">
-              {hep.avg_per_period} <span className="text-xs font-normal text-muted-foreground">kWh/dan</span>
-            </p>
-            <p className="text-xs text-muted-foreground">
-              {hep.occupancy_ratio.toFixed(1)}× iznad praznog stana ({hep.baseline_empty} kWh/dan baseline)
-            </p>
-            <a
-              href="https://mojracun.hep.hr"
-              target="_blank"
-              rel="noopener noreferrer"
-              className="inline-flex items-center gap-1 text-xs text-primary hover:underline"
-            >
-              mojracun.hep.hr <ArrowSquareOut size={11} />
-            </a>
-          </div>
-          <div className="rounded-lg border p-4 space-y-1">
-            <div className="flex items-center gap-2 text-sm font-semibold">
-              <Drop size={14} className="text-primary" />
-              Vodovod — voda
-            </div>
-            <p className="text-lg font-semibold tabular-nums">
-              {vodovod.avg_per_period} <span className="text-xs font-normal text-muted-foreground">m³/mj</span>
-            </p>
-            <p className="text-xs text-muted-foreground">
-              {vodovod.occupancy_ratio.toFixed(1)}× iznad praznog stana ({vodovod.baseline_empty} m³/mj baseline)
-            </p>
-            <a
-              href="https://www.vik-split.hr"
-              target="_blank"
-              rel="noopener noreferrer"
-              className="inline-flex items-center gap-1 text-xs text-primary hover:underline"
-            >
-              vik-split.hr <ArrowSquareOut size={11} />
-            </a>
-          </div>
-        </div>
-      </section>
-
-      <Separator />
-
-      <section className="space-y-3">
-        <h2 className="text-sm font-semibold uppercase tracking-wide text-muted-foreground">
-          AI istraga online oglasa
-        </h2>
-        <DiscoveryTrigger registeredId={unit.id} unitName={unit.name} />
-      </section>
-
-      <Separator />
-
-      <section className="space-y-3">
-        <h2 className="text-sm font-semibold uppercase tracking-wide text-muted-foreground">
-          Izvor
-        </h2>
+      <section className="pt-2 border-t">
         <a
           href="https://www.accommodation.croatia.hr"
           target="_blank"
           rel="noopener noreferrer"
-          className="inline-flex items-center gap-1.5 text-sm text-primary hover:underline"
+          className="inline-flex items-center gap-1.5 text-xs text-muted-foreground hover:text-primary"
         >
-          accommodation.croatia.hr <ArrowSquareOut size={14} />
+          Izvor: accommodation.croatia.hr <ArrowSquareOut size={11} />
         </a>
       </section>
     </div>

@@ -281,6 +281,47 @@ export function onlineNightsFor(unit: {
   }
 }
 
+/**
+ * Days within `daysBack` when the unit is blocked on Airbnb/Booking but has
+ * NO matching check-in in eVisitor. Each entry is an ISO date (YYYY-MM-DD).
+ *
+ * In a real pipeline this would diff the platform calendar against eVisitor
+ * stays. Here we use what we already have: if the unit has at least one
+ * confirmed online listing (entity_links.verdict='matched'), we know it IS
+ * being advertised — so we synthesize a credible discrepancy pattern keyed on
+ * the unit id. Density tracks the count of matched listings (more listings →
+ * more activity → more unreported nights).
+ *
+ * Caller passes `matchedListingCount` from the page query so this stays a
+ * pure function.
+ */
+export function unreportedOnlineDays(
+  unit: {
+    id: string;
+    name?: string | null;
+    beds?: number | null;
+    category?: string | null;
+  },
+  options: { daysBack?: number; matchedListingCount?: number } = {},
+): Set<string> {
+  const { daysBack = 90, matchedListingCount = 0 } = options;
+  if (matchedListingCount <= 0) return new Set();
+
+  // Tune density: 1 matched listing → ~25% red days; 4+ → ~50%.
+  const density = Math.min(50, 20 + matchedListingCount * 6);
+
+  const set = new Set<string>();
+  for (let i = daysBack - 1; i >= 0; i--) {
+    const d = new Date(TODAY);
+    d.setUTCDate(d.getUTCDate() - i);
+    const iso = d.toISOString().slice(0, 10);
+    if (hash(unit.id + ":unrep:" + iso) % 100 < density) {
+      set.add(iso);
+    }
+  }
+  return set;
+}
+
 export function evisitorLookupForCandidate(
   candidate: { id: string; title?: string | null; neighborhood?: string | null },
   options: { confidenceUnregistered?: number } = {}
