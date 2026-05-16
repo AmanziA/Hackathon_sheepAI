@@ -62,6 +62,36 @@ function Recenter({ lat, lon }: { lat: number; lon: number }) {
 export function LookupMap({ searched, flagged, registered, osm, className }: Props) {
   const [streetGeometry, setStreetGeometry] = useState<[number, number][] | null>(null);
   const lastFetched = useRef<string | null>(null);
+  const mapRef = useRef<L.Map | null>(null);
+  const containerRef = useRef<HTMLDivElement | null>(null);
+
+  // Hard cleanup: in dev StrictMode / HMR, react-leaflet's MapContainer will
+  // double-mount onto the same DOM node and throw "Map container is being
+  // reused". Explicitly tearing down the Leaflet instance on unmount and
+  // scrubbing the container's leaflet metadata prevents the next mount from
+  // seeing a tainted node.
+  useEffect(() => {
+    return () => {
+      const map = mapRef.current;
+      if (map) {
+        try {
+          map.remove();
+        } catch {
+          // ignore
+        }
+        mapRef.current = null;
+      }
+      const node = containerRef.current;
+      if (node) {
+        // Leaflet stores its instance pointer on the DOM node as _leaflet_id
+        // and the container element; clearing both lets a remount succeed.
+        const el = node.querySelector(".leaflet-container") as HTMLElement | null;
+        const target = el ?? node;
+        // eslint-disable-next-line @typescript-eslint/no-explicit-any
+        (target as any)._leaflet_id = undefined;
+      }
+    };
+  }, []);
 
   useEffect(() => {
     if (!osm || (osm.osm_type !== "way" && osm.osm_type !== "relation")) {
@@ -121,8 +151,14 @@ export function LookupMap({ searched, flagged, registered, osm, className }: Pro
   }, [osm]);
 
   return (
-    <div className={className ?? "h-[460px] w-full rounded-lg border overflow-hidden relative"}>
+    <div
+      ref={containerRef}
+      className={className ?? "h-[460px] w-full rounded-lg border overflow-hidden relative"}
+    >
       <MapContainer
+        ref={(m) => {
+          mapRef.current = m ?? null;
+        }}
         center={[searched.lat, searched.lon]}
         zoom={16}
         scrollWheelZoom
