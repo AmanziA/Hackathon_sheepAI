@@ -8,6 +8,24 @@ import {
   TableRow,
 } from "@/components/ui/table";
 import { CheckCircle } from "@phosphor-icons/react/dist/ssr";
+import { cookies } from "next/headers";
+import { createClient } from "@/utils/supabase/server";
+
+export const dynamic = "force-dynamic";
+
+type RegisteredUnit = {
+  id: string;
+  name: string | null;
+  owner: string | null;
+  neighborhood: string | null;
+  address: string | null;
+  street: string | null;
+  number: string | null;
+  beds: number | null;
+  category: string | null;
+  stars: number | null;
+  scraped_at: string | null;
+};
 
 const MOCK_REGISTERED = [
   { id: "r1",  name: "Apartman Kovač",              owner: "Kovač Ivan",          neighborhood: "Meje",       address: "Šetalište I. Meštrovića 22", beds: 6, category: "Apartman",         stars: 3,    scraped_at: "2026-05-14" },
@@ -30,18 +48,59 @@ const MOCK_REGISTERED = [
   { id: "r18", name: "Apartman Sunce",              owner: "Sunić Darko",         neighborhood: "Firule",     address: "Firulska 22",                beds: 4, category: "Apartman",         stars: 3,    scraped_at: "2026-05-14" },
 ];
 
-export default function RegistriranePage() {
+function formatAddress(u: RegisteredUnit) {
+  if (u.address) return u.address;
+  const parts = [u.street, u.number].filter(Boolean);
+  return parts.length ? parts.join(" ") : "—";
+}
+
+function formatSnapshotDate(units: RegisteredUnit[]) {
+  const latest = units
+    .map((u) => u.scraped_at)
+    .filter((d): d is string => Boolean(d))
+    .sort()
+    .at(-1);
+  if (!latest) return "—";
+  return new Date(latest).toLocaleDateString("hr-HR", {
+    day: "numeric",
+    month: "short",
+    year: "numeric",
+  });
+}
+
+export default async function RegistriranePage() {
+  const cookieStore = await cookies();
+  const supabase = createClient(cookieStore);
+
+  const { data, error } = await supabase
+    .from("registered_units")
+    .select("id, name, owner, neighborhood, address, street, number, beds, category, stars, scraped_at")
+    .order("name", { ascending: true })
+    .limit(1000);
+
+  const units: RegisteredUnit[] = (data as RegisteredUnit[] | null) ?? [];
+  const usingMock = !!error || units.length === 0;
+  const rows: RegisteredUnit[] = usingMock
+    ? (MOCK_REGISTERED as unknown as RegisteredUnit[])
+    : units;
+
   return (
     <div className="p-6 space-y-6">
       <div className="flex items-start justify-between">
         <div className="space-y-1">
           <h1 className="text-2xl font-semibold tracking-tight">Registrirani objekti</h1>
           <p className="text-sm text-muted-foreground">
-            Accommodation.croatia.hr · snimak 14. svi. 2026.
+            Accommodation.croatia.hr · snimak {formatSnapshotDate(rows)}
+            {usingMock ? " · mock fallback" : ""}
           </p>
+          {error ? (
+            <p className="text-xs text-destructive">
+              Supabase: {error.message}
+            </p>
+          ) : null}
         </div>
         <Badge variant="secondary" className="text-sm px-3 py-1">
-          {MOCK_REGISTERED.length} objekata
+          {rows.length} objekata
         </Badge>
       </div>
 
@@ -59,25 +118,29 @@ export default function RegistriranePage() {
             </TableRow>
           </TableHeader>
           <TableBody>
-            {MOCK_REGISTERED.map((unit) => (
+            {rows.map((unit) => (
               <TableRow key={unit.id}>
                 <TableCell>
                   <div className="flex items-center gap-2">
                     <CheckCircle size={14} className="text-[hsl(var(--success))] shrink-0" />
-                    <span className="font-medium">{unit.name}</span>
+                    <span className="font-medium">{unit.name ?? "—"}</span>
                   </div>
                 </TableCell>
-                <TableCell className="text-sm text-muted-foreground">{unit.owner}</TableCell>
-                <TableCell className="text-sm">{unit.neighborhood}</TableCell>
-                <TableCell className="text-sm text-muted-foreground">{unit.address}</TableCell>
-                <TableCell className="text-center text-sm">{unit.beds}</TableCell>
+                <TableCell className="text-sm text-muted-foreground">{unit.owner ?? "—"}</TableCell>
+                <TableCell className="text-sm">{unit.neighborhood ?? "—"}</TableCell>
+                <TableCell className="text-sm text-muted-foreground">{formatAddress(unit)}</TableCell>
+                <TableCell className="text-center text-sm">{unit.beds ?? "—"}</TableCell>
                 <TableCell>
-                  <Badge variant="outline" className="text-xs">
-                    {unit.category}
-                  </Badge>
+                  {unit.category ? (
+                    <Badge variant="outline" className="text-xs">
+                      {unit.category}
+                    </Badge>
+                  ) : (
+                    "—"
+                  )}
                 </TableCell>
                 <TableCell className="text-center text-sm">
-                  {unit.stars !== null ? unit.stars : "—"}
+                  {unit.stars != null ? unit.stars : "—"}
                 </TableCell>
               </TableRow>
             ))}
