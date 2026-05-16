@@ -72,7 +72,7 @@ export function AppShell({ children }: Props) {
             )}
           >
             <WarningCircle size={15} weight={dashActive ? "bold" : "regular"} />
-            <span className="flex-1">Nalazi</span>
+            <span className="flex-1">Za provjeru</span>
             {!dashActive && AUTO_COUNT > 0 && (
               <span className="bg-destructive text-destructive-foreground text-[10px] font-bold leading-none rounded-full px-1.5 py-0.5">
                 {AUTO_COUNT}

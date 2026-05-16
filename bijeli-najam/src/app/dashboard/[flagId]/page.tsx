@@ -22,7 +22,7 @@ export default async function FlagDetailPage({ params }: Props) {
         ← Natrag na popis
       </a>
       <h1 className="text-2xl font-bold tracking-tight mb-8">
-        {flag.candidate_listings?.title ?? "Detalji nalaza"}
+        {flag.candidate_listings?.title ?? "Detalji predmeta"}
       </h1>
       <EvidenceCard flag={flag} trace={trace} steps={steps} entityLink={entityLink} />
     </div>

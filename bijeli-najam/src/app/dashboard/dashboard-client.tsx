@@ -41,18 +41,37 @@ const Map3D = dynamic(() => import("@/components/domain/map3d"), { ssr: false })
 
 const AUTO_FLAG_THRESHOLD = 0.9;
 
+export type MonitoringAlert = {
+  id: string;
+  name: string;
+  owner: string | null;
+  neighborhood: string | null;
+  beds: number | null;
+  lat: number | null;
+  lon: number | null;
+  status: "occupied_silent" | "empty_reporting";
+  reason: string;
+  hep_kwh_per_day: number;
+  vodovod_m3_per_month: number;
+  reported_nights_ytd: number;
+  mbo: string;
+  last_check_in_at: string | null;
+};
+
 interface Props {
   flags: Flag[];
+  monitoringAlerts?: MonitoringAlert[];
 }
 
 type Resolution = "reported" | "dismissed";
 
-type FilterTab = "sve" | "auto" | "provjera";
+type FilterTab = "sve" | "auto" | "provjera" | "registrirani";
 
-export function DashboardClient({ flags }: Props) {
+export function DashboardClient({ flags, monitoringAlerts = [] }: Props) {
   const [search, setSearch] = useState("");
   const [activeTab, setActiveTab] = useState<FilterTab>("sve");
   const [selectedId, setSelectedId] = useState<string | null>(null);
+  const [selectedMonitoringId, setSelectedMonitoringId] = useState<string | null>(null);
   const [resolved, setResolved] = useState<Record<string, Resolution>>({});
 
   const filtered = useMemo(() => {
@@ -66,30 +85,62 @@ export function DashboardClient({ flags }: Props) {
     );
   }, [flags, search]);
 
+  const filteredMonitoring = useMemo(() => {
+    const q = search.toLowerCase();
+    if (!q) return monitoringAlerts;
+    return monitoringAlerts.filter(
+      (m) =>
+        m.name.toLowerCase().includes(q) ||
+        m.neighborhood?.toLowerCase().includes(q) ||
+        m.owner?.toLowerCase().includes(q)
+    );
+  }, [monitoringAlerts, search]);
+
   const open = filtered.filter((f) => !resolved[f.id]);
   const allAutoFlagged = open.filter((f) => f.confidence_unregistered >= AUTO_FLAG_THRESHOLD);
   const allNeedsReview = open.filter((f) => f.confidence_unregistered < AUTO_FLAG_THRESHOLD);
+  const allMonitoring = filteredMonitoring.filter((m) => !resolved[m.id]);
   const resolvedList = filtered.filter((f) => !!resolved[f.id]);
+  const resolvedMonitoring = filteredMonitoring.filter((m) => !!resolved[m.id]);
 
-  const autoFlagged = activeTab === "provjera" ? [] : allAutoFlagged;
-  const needsReview = activeTab === "auto" ? [] : allNeedsReview;
+  const showFlagSections = activeTab === "sve" || activeTab === "auto" || activeTab === "provjera";
+  const showMonitoring = activeTab === "sve" || activeTab === "registrirani";
+
+  const autoFlagged = activeTab === "auto" || activeTab === "sve" ? allAutoFlagged : [];
+  const needsReview = activeTab === "provjera" || activeTab === "sve" ? allNeedsReview : [];
+  const monitoringRows = showMonitoring ? allMonitoring : [];
 
   const selectedFlag = selectedId ? flags.find((f) => f.id === selectedId) : null;
+  const selectedMonitoring = selectedMonitoringId
+    ? monitoringAlerts.find((m) => m.id === selectedMonitoringId)
+    : null;
 
   function resolve(id: string, how: Resolution) {
     setResolved((prev) => ({ ...prev, [id]: how }));
     if (selectedId === id) setSelectedId(null);
+    if (selectedMonitoringId === id) setSelectedMonitoringId(null);
   }
 
-  const mapMarkers = open
-    .filter((f) => f.candidate_listings?.approx_lat && f.candidate_listings?.approx_lon)
-    .map((f) => ({
-      id: f.id,
-      lat: f.candidate_listings!.approx_lat!,
-      lon: f.candidate_listings!.approx_lon!,
-      confidence: f.confidence_unregistered,
-      title: f.candidate_listings?.title,
-    }));
+  const mapMarkers = [
+    ...open
+      .filter((f) => f.candidate_listings?.approx_lat && f.candidate_listings?.approx_lon)
+      .map((f) => ({
+        id: f.id,
+        lat: f.candidate_listings!.approx_lat!,
+        lon: f.candidate_listings!.approx_lon!,
+        confidence: f.confidence_unregistered,
+        title: f.candidate_listings?.title,
+      })),
+    ...allMonitoring
+      .filter((m) => m.lat != null && m.lon != null)
+      .map((m) => ({
+        id: m.id,
+        lat: m.lat!,
+        lon: m.lon!,
+        confidence: 0.85,
+        title: `${m.name} · ${m.status === "occupied_silent" ? "ne prijavljuje" : "prazan, prijavljuje"}`,
+      })),
+  ];
 
   return (
     <div className="flex flex-col h-full">
@@ -98,9 +149,10 @@ export function DashboardClient({ flags }: Props) {
         {/* Filter tabs */}
         <div className="flex items-center gap-1 bg-muted rounded-lg p-1">
           {([
-            { key: "sve",      label: "Sve",              count: allAutoFlagged.length + allNeedsReview.length },
-            { key: "auto",     label: "Automatski",       count: allAutoFlagged.length },
-            { key: "provjera", label: "Na provjeri",      count: allNeedsReview.length },
+            { key: "sve",          label: "Sve",                count: allAutoFlagged.length + allNeedsReview.length + allMonitoring.length },
+            { key: "auto",         label: "Automatski",         count: allAutoFlagged.length },
+            { key: "provjera",     label: "Na provjeri",        count: allNeedsReview.length },
+            { key: "registrirani", label: "Sumnjivi registrirani", count: allMonitoring.length },
           ] as { key: FilterTab; label: string; count: number }[]).map(({ key, label, count }) => (
             <button
               key={key}
@@ -118,6 +170,7 @@ export function DashboardClient({ flags }: Props) {
                 activeTab === key
                   ? key === "auto" ? "bg-destructive/15 text-destructive"
                   : key === "provjera" ? "bg-amber-100 text-amber-700"
+                  : key === "registrirani" ? "bg-destructive/15 text-destructive"
                   : "bg-muted text-muted-foreground"
                   : "bg-muted-foreground/15 text-muted-foreground"
               )}>
@@ -150,16 +203,16 @@ export function DashboardClient({ flags }: Props) {
         <div className="w-[58%] overflow-y-auto flex flex-col">
 
           {/* Empty state */}
-          {open.length === 0 && (
+          {open.length === 0 && monitoringRows.length === 0 && (
             <div className="flex flex-col items-center justify-center flex-1 gap-3 text-center py-16 px-6">
               <CheckCircle size={40} className="text-muted-foreground/40" />
               <p className="font-medium text-muted-foreground">Sve je riješeno</p>
-              <p className="text-sm text-muted-foreground">Nema neriješenih oznaka.</p>
+              <p className="text-sm text-muted-foreground">Nema neriješenih predmeta.</p>
             </div>
           )}
 
           {/* AUTO-FLAGGED */}
-          {autoFlagged.length > 0 && (
+          {showFlagSections && autoFlagged.length > 0 && (
             <section>
               <div className="px-5 pt-4 pb-2 flex items-center gap-2 sticky top-0 bg-background z-10 border-b">
                 <WarningCircle size={14} className="text-destructive" />
@@ -185,7 +238,7 @@ export function DashboardClient({ flags }: Props) {
           )}
 
           {/* NEEDS REVIEW */}
-          {needsReview.length > 0 && (
+          {showFlagSections && needsReview.length > 0 && (
             <section className={cn(autoFlagged.length > 0 && "mt-2")}>
               <div className="px-5 pt-4 pb-2 flex items-center gap-2 sticky top-0 bg-background z-10 border-b">
                 <Question size={14} className="text-amber-600" />
@@ -210,15 +263,42 @@ export function DashboardClient({ flags }: Props) {
             </section>
           )}
 
+          {/* SUMNJIVI REGISTRIRANI (Monitoring red) */}
+          {monitoringRows.length > 0 && (
+            <section className={cn((autoFlagged.length > 0 || needsReview.length > 0) && "mt-2")}>
+              <div className="px-5 pt-4 pb-2 flex items-center gap-2 sticky top-0 bg-background z-10 border-b">
+                <Lightning size={14} className="text-destructive" />
+                <span className="text-xs font-semibold uppercase tracking-wide text-destructive">
+                  Sumnjivi registrirani — HEP/Vodovod ↔ eVisitor
+                </span>
+                <Badge className="ml-auto bg-destructive/10 text-destructive border-destructive/20 text-xs">
+                  {monitoringRows.length}
+                </Badge>
+              </div>
+              <div className="divide-y">
+                {monitoringRows.map((alert) => (
+                  <MonitoringCard
+                    key={alert.id}
+                    alert={alert}
+                    onOpen={() => setSelectedMonitoringId(alert.id)}
+                    onResolve={resolve}
+                  />
+                ))}
+              </div>
+            </section>
+          )}
+
           {/* RESOLVED */}
-          {resolvedList.length > 0 && (
+          {(resolvedList.length > 0 || resolvedMonitoring.length > 0) && (
             <section className="mt-4 opacity-50">
               <div className="px-5 pt-3 pb-2 flex items-center gap-2 border-t border-b">
                 <CheckCircle size={14} className="text-muted-foreground" />
                 <span className="text-xs font-semibold uppercase tracking-wide text-muted-foreground">
                   Riješeno
                 </span>
-                <span className="ml-auto text-xs text-muted-foreground">{resolvedList.length}</span>
+                <span className="ml-auto text-xs text-muted-foreground">
+                  {resolvedList.length + resolvedMonitoring.length}
+                </span>
               </div>
               <div className="divide-y">
                 {resolvedList.map((flag) => (
@@ -236,6 +316,21 @@ export function DashboardClient({ flags }: Props) {
                     </span>
                   </div>
                 ))}
+                {resolvedMonitoring.map((alert) => (
+                  <div key={alert.id} className="px-5 py-3 flex items-center gap-3">
+                    {resolved[alert.id] === "reported" ? (
+                      <FilePdf size={14} className="text-muted-foreground shrink-0" />
+                    ) : (
+                      <X size={14} className="text-muted-foreground shrink-0" />
+                    )}
+                    <span className="text-sm text-muted-foreground line-through flex-1 truncate">
+                      {alert.name}
+                    </span>
+                    <span className="text-xs text-muted-foreground">
+                      {resolved[alert.id] === "reported" ? "Prijavljeno" : "Odbačeno"}
+                    </span>
+                  </div>
+                ))}
               </div>
             </section>
           )}
@@ -245,13 +340,16 @@ export function DashboardClient({ flags }: Props) {
         <div className="flex-1 border-l">
           <Map3D
             markers={mapMarkers}
-            onMarkerClick={setSelectedId}
+            onMarkerClick={(id: string) => {
+              if (monitoringAlerts.some((m) => m.id === id)) setSelectedMonitoringId(id);
+              else setSelectedId(id);
+            }}
             className="h-full w-full"
           />
         </div>
       </div>
 
-      {/* Evidence sheet */}
+      {/* Evidence sheet — candidate flag */}
       <Sheet open={!!selectedId} onOpenChange={(o: boolean) => !o && setSelectedId(null)}>
         <SheetContent className="w-[480px] sm:max-w-[480px] overflow-y-auto px-6 py-6">
           <SheetHeader className="mb-4">
@@ -263,6 +361,27 @@ export function DashboardClient({ flags }: Props) {
             <EvidenceSheetContent
               flag={selectedFlag}
               resolution={resolved[selectedFlag.id]}
+              onResolve={resolve}
+            />
+          )}
+        </SheetContent>
+      </Sheet>
+
+      {/* Evidence sheet — monitoring alert */}
+      <Sheet
+        open={!!selectedMonitoringId}
+        onOpenChange={(o: boolean) => !o && setSelectedMonitoringId(null)}
+      >
+        <SheetContent className="w-[480px] sm:max-w-[480px] overflow-y-auto px-6 py-6">
+          <SheetHeader className="mb-4">
+            <SheetTitle className="text-base leading-snug pr-6">
+              {selectedMonitoring?.name ?? "Dokazi"}
+            </SheetTitle>
+          </SheetHeader>
+          {selectedMonitoring && (
+            <MonitoringSheetContent
+              alert={selectedMonitoring}
+              resolution={resolved[selectedMonitoring.id]}
               onResolve={resolve}
             />
           )}
@@ -531,6 +650,211 @@ function EvidenceSheetContent({
         </div>
       )}
 
+    </div>
+  );
+}
+
+/* ─── Monitoring alert card + sheet ─────────────────────────────────────── */
+
+const MONITORING_META: Record<
+  MonitoringAlert["status"],
+  { label: string; short: string; tone: "destructive" | "warning" }
+> = {
+  occupied_silent: {
+    label: "Aktivan, ne prijavljuje noćenja",
+    short: "Aktivan, ne prijavljuje",
+    tone: "destructive",
+  },
+  empty_reporting: {
+    label: "Prijavljuje noćenja, ali stan je prazan",
+    short: "Prijavljuje, prazan",
+    tone: "destructive",
+  },
+};
+
+function formatDate(iso: string | null): string {
+  if (!iso) return "—";
+  return new Date(iso).toLocaleDateString("hr-HR", { day: "numeric", month: "short" });
+}
+
+function MonitoringCard({
+  alert,
+  onOpen,
+  onResolve,
+}: {
+  alert: MonitoringAlert;
+  onOpen: () => void;
+  onResolve: (id: string, how: Resolution) => void;
+}) {
+  const meta = MONITORING_META[alert.status];
+
+  return (
+    <div className="px-5 py-4 flex gap-4 hover:bg-muted/40 transition-colors border-l-2 border-l-destructive">
+      <div className="flex-1 min-w-0 space-y-1.5">
+        <div className="flex items-center gap-2 flex-wrap">
+          <Badge className="bg-destructive/10 text-destructive border-destructive/20 text-xs">
+            {meta.short}
+          </Badge>
+          <Badge variant="outline" className="text-xs">
+            Registrirani
+          </Badge>
+          {alert.neighborhood && (
+            <span className="flex items-center gap-1 text-xs text-muted-foreground">
+              <MapPin size={11} />
+              {alert.neighborhood}
+            </span>
+          )}
+        </div>
+        <p
+          className="text-sm font-medium truncate cursor-pointer hover:underline"
+          onClick={onOpen}
+        >
+          {alert.name}
+        </p>
+        <div className="flex items-center gap-3 text-xs text-muted-foreground flex-wrap">
+          {alert.owner && <span>{alert.owner}</span>}
+          <span className="flex items-center gap-1">
+            <Lightning size={11} />
+            {alert.hep_kwh_per_day.toFixed(1)} kWh/dan
+          </span>
+          <span className="flex items-center gap-1">
+            <Drop size={11} />
+            {alert.vodovod_m3_per_month.toFixed(1)} m³/mj
+          </span>
+          <span>· prijavljeno {alert.reported_nights_ytd}</span>
+        </div>
+      </div>
+
+      <div className="flex flex-col gap-1.5 shrink-0 justify-center">
+        <Button
+          size="sm"
+          className="gap-1.5 h-7 text-xs"
+          onClick={() => onResolve(alert.id, "reported")}
+        >
+          <FilePdf size={13} />
+          Prijavi inspektoru
+        </Button>
+        <Button
+          size="sm"
+          variant="ghost"
+          className="gap-1.5 h-7 text-xs text-muted-foreground"
+          onClick={() => onResolve(alert.id, "dismissed")}
+        >
+          <X size={13} />
+          Odbaci
+        </Button>
+      </div>
+    </div>
+  );
+}
+
+function MonitoringSheetContent({
+  alert,
+  resolution,
+  onResolve,
+}: {
+  alert: MonitoringAlert;
+  resolution: Resolution | undefined;
+  onResolve: (id: string, how: Resolution) => void;
+}) {
+  const meta = MONITORING_META[alert.status];
+
+  return (
+    <div className="space-y-4">
+      <a
+        href={`/dashboard/registrirani/${alert.id}`}
+        className="inline-flex items-center gap-1 text-xs text-primary hover:underline"
+      >
+        Otvori karton registriranog <ArrowSquareOut size={11} />
+      </a>
+
+      {resolution ? (
+        <div className="rounded-xl bg-muted px-4 py-3 flex items-center gap-2.5">
+          <CheckCircle size={16} className="text-muted-foreground shrink-0" />
+          <span className="text-sm text-muted-foreground">
+            {resolution === "reported" ? "Prijavljeno inspektoru" : "Odbačeno"}
+          </span>
+        </div>
+      ) : (
+        <div className="rounded-xl bg-destructive/10 border border-destructive/20 px-4 py-3 space-y-1">
+          <div className="flex items-center gap-2.5">
+            <Lightning size={16} className="text-destructive shrink-0" />
+            <span className="text-sm font-medium text-destructive">{meta.label}</span>
+          </div>
+          <p className="text-xs text-muted-foreground pl-7">{alert.reason}</p>
+        </div>
+      )}
+
+      <div className="rounded-xl border p-4 space-y-2 text-sm">
+        <div className="flex items-center justify-between">
+          <span className="text-muted-foreground">MBO</span>
+          <code className="font-mono text-xs">{alert.mbo}</code>
+        </div>
+        <div className="flex items-center justify-between">
+          <span className="text-muted-foreground">Vlasnik</span>
+          <span>{alert.owner ?? "—"}</span>
+        </div>
+        {alert.neighborhood && (
+          <div className="flex items-center justify-between">
+            <span className="text-muted-foreground">Kvart</span>
+            <span>{alert.neighborhood}</span>
+          </div>
+        )}
+        {alert.beds != null && (
+          <div className="flex items-center justify-between">
+            <span className="text-muted-foreground">Registrirano kreveta</span>
+            <span className="tabular-nums">{alert.beds}</span>
+          </div>
+        )}
+      </div>
+
+      <div className="grid grid-cols-2 gap-2">
+        <div className="rounded-xl border p-3 space-y-0.5">
+          <div className="flex items-center gap-1.5 text-xs text-muted-foreground">
+            <Lightning size={12} className="text-warning" />
+            HEP
+          </div>
+          <p className="text-lg font-semibold tabular-nums">
+            {alert.hep_kwh_per_day.toFixed(1)}
+            <span className="text-xs font-normal text-muted-foreground ml-1">kWh/dan</span>
+          </p>
+        </div>
+        <div className="rounded-xl border p-3 space-y-0.5">
+          <div className="flex items-center gap-1.5 text-xs text-muted-foreground">
+            <Drop size={12} className="text-primary" />
+            Vodovod
+          </div>
+          <p className="text-lg font-semibold tabular-nums">
+            {alert.vodovod_m3_per_month.toFixed(1)}
+            <span className="text-xs font-normal text-muted-foreground ml-1">m³/mj</span>
+          </p>
+        </div>
+        <div className="rounded-xl border p-3 space-y-0.5">
+          <div className="text-xs text-muted-foreground">eVisitor noćenja YTD</div>
+          <p className="text-lg font-semibold tabular-nums">{alert.reported_nights_ytd}</p>
+        </div>
+        <div className="rounded-xl border p-3 space-y-0.5">
+          <div className="text-xs text-muted-foreground">Posljednja prijava</div>
+          <p className="text-sm font-semibold">{formatDate(alert.last_check_in_at)}</p>
+        </div>
+      </div>
+
+      {!resolution && (
+        <div className="space-y-2">
+          <Button className="w-full gap-2" onClick={() => onResolve(alert.id, "reported")}>
+            <FilePdf size={15} />
+            Prijavi inspektoru
+          </Button>
+          <Button
+            variant="outline"
+            className="w-full gap-2 text-muted-foreground"
+            onClick={() => onResolve(alert.id, "dismissed")}
+          >
+            <X size={15} />
+            Odbaci
+          </Button>
+        </div>
+      )}
     </div>
   );
 }
