@@ -11,6 +11,7 @@ import {
   WarningCircle,
   Pulse,
   Intersect,
+  Archive,
   type Icon,
   type IconWeight,
 } from "@phosphor-icons/react";
@@ -85,6 +86,12 @@ export function AppShell({ children }: Props) {
             label="Monitoring"
             icon={Pulse}
             active={isActive("/dashboard/monitoring")}
+          />
+          <NavItem
+            href="/dashboard/prijavljeni"
+            label="Prijavljeni"
+            icon={Archive}
+            active={isActive("/dashboard/prijavljeni")}
           />
 
           <div className="my-3 mx-1 border-t" />

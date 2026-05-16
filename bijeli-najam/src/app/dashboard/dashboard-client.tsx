@@ -2,6 +2,7 @@
 
 import React, { useState, useMemo } from "react";
 import dynamic from "next/dynamic";
+import { useResolved, type Resolution } from "@/lib/resolved-store";
 import {
   Sheet,
   SheetContent,
@@ -61,16 +62,21 @@ interface Props {
   monitoringAlerts?: MonitoringAlert[];
 }
 
-type Resolution = "reported" | "dismissed";
-
-type FilterTab = "sve" | "auto" | "provjera" | "registrirani" | "prijavljeni";
+type FilterTab = "sve" | "auto" | "provjera" | "registrirani";
 
 export function DashboardClient({ flags, monitoringAlerts = [] }: Props) {
   const [search, setSearch] = useState("");
   const [activeTab, setActiveTab] = useState<FilterTab>("sve");
   const [selectedId, setSelectedId] = useState<string | null>(null);
   const [selectedMonitoringId, setSelectedMonitoringId] = useState<string | null>(null);
-  const [resolved, setResolved] = useState<Record<string, Resolution>>({});
+  const { items: resolvedItems, resolve: storeResolve } = useResolved();
+  const resolved: Record<string, Resolution> = useMemo(
+    () =>
+      Object.fromEntries(
+        Object.entries(resolvedItems).map(([id, item]) => [id, item.resolution])
+      ),
+    [resolvedItems]
+  );
 
   const filtered = useMemo(() => {
     const q = search.toLowerCase();
@@ -98,22 +104,17 @@ export function DashboardClient({ flags, monitoringAlerts = [] }: Props) {
   const allAutoFlagged = open.filter((f) => f.confidence_unregistered >= AUTO_FLAG_THRESHOLD);
   const allNeedsReview = open.filter((f) => f.confidence_unregistered < AUTO_FLAG_THRESHOLD);
   const allMonitoring = filteredMonitoring.filter((m) => !resolved[m.id]);
-  const resolvedList = filtered.filter((f) => !!resolved[f.id]);
-  const resolvedMonitoring = filteredMonitoring.filter((m) => !!resolved[m.id]);
 
   const showFlagSections = activeTab === "sve" || activeTab === "auto" || activeTab === "provjera";
   const showMonitoring = activeTab === "sve" || activeTab === "registrirani";
-  const showReported = activeTab === "prijavljeni";
 
   const autoFlagged = activeTab === "auto" || activeTab === "sve" ? allAutoFlagged : [];
   const needsReview = activeTab === "provjera" || activeTab === "sve" ? allNeedsReview : [];
   const monitoringRows = showMonitoring ? allMonitoring : [];
 
-  const reportedFlags = filtered.filter((f) => resolved[f.id] === "reported");
-  const reportedMonitoring = filteredMonitoring.filter((m) => resolved[m.id] === "reported");
-  const dismissedFlags = filtered.filter((f) => resolved[f.id] === "dismissed");
-  const dismissedMonitoring = filteredMonitoring.filter((m) => resolved[m.id] === "dismissed");
-  const reportedTotal = reportedFlags.length + reportedMonitoring.length;
+  const reportedCount = Object.values(resolvedItems).filter(
+    (i) => i.resolution === "reported"
+  ).length;
 
   const selectedFlag = selectedId ? flags.find((f) => f.id === selectedId) : null;
   const selectedMonitoring = selectedMonitoringId
@@ -121,7 +122,27 @@ export function DashboardClient({ flags, monitoringAlerts = [] }: Props) {
     : null;
 
   function resolve(id: string, how: Resolution) {
-    setResolved((prev) => ({ ...prev, [id]: how }));
+    const flag = flags.find((f) => f.id === id);
+    const alert = monitoringAlerts.find((m) => m.id === id);
+    if (flag) {
+      storeResolve({
+        id,
+        kind: "flag",
+        resolution: how,
+        title: flag.candidate_listings?.title ?? "—",
+        meta: flag.candidate_listings?.neighborhood ?? "",
+        href: `/dashboard/${flag.id}`,
+      });
+    } else if (alert) {
+      storeResolve({
+        id,
+        kind: "monitoring",
+        resolution: how,
+        title: alert.name,
+        meta: alert.neighborhood ?? "",
+        href: `/dashboard/registrirani/${alert.id}`,
+      });
+    }
     if (selectedId === id) setSelectedId(null);
     if (selectedMonitoringId === id) setSelectedMonitoringId(null);
   }
@@ -158,7 +179,6 @@ export function DashboardClient({ flags, monitoringAlerts = [] }: Props) {
             { key: "auto",         label: "Automatski",         count: allAutoFlagged.length },
             { key: "provjera",     label: "Na provjeri",        count: allNeedsReview.length },
             { key: "registrirani", label: "Sumnjivi registrirani", count: allMonitoring.length },
-            { key: "prijavljeni",  label: "Prijavljeni",        count: reportedTotal },
           ] as { key: FilterTab; label: string; count: number }[]).map(({ key, label, count }) => (
             <button
               key={key}
@@ -177,7 +197,6 @@ export function DashboardClient({ flags, monitoringAlerts = [] }: Props) {
                   ? key === "auto" ? "bg-destructive/15 text-destructive"
                   : key === "provjera" ? "bg-amber-100 text-amber-700"
                   : key === "registrirani" ? "bg-destructive/15 text-destructive"
-                  : key === "prijavljeni" ? "bg-success/15 text-success"
                   : "bg-muted text-muted-foreground"
                   : "bg-muted-foreground/15 text-muted-foreground"
               )}>
@@ -196,14 +215,13 @@ export function DashboardClient({ flags, monitoringAlerts = [] }: Props) {
           className="max-w-xs h-8 text-sm"
         />
 
-        <button
-          type="button"
-          onClick={() => setActiveTab("prijavljeni")}
+        <a
+          href="/dashboard/prijavljeni"
           className="ml-auto flex items-center gap-1.5 text-xs text-muted-foreground hover:text-foreground transition-colors"
         >
           <CheckCircle size={12} />
-          {reportedTotal} prijavljeno
-        </button>
+          {reportedCount} prijavljeno →
+        </a>
       </div>
 
       <div className="flex flex-1 overflow-hidden">
@@ -296,112 +314,6 @@ export function DashboardClient({ flags, monitoringAlerts = [] }: Props) {
             </section>
           )}
 
-          {/* PRIJAVLJENI (dedicated tab) */}
-          {showReported && (
-            <>
-              {reportedTotal === 0 && dismissedFlags.length + dismissedMonitoring.length === 0 && (
-                <div className="flex flex-col items-center justify-center flex-1 gap-3 text-center py-16 px-6">
-                  <FilePdf size={40} className="text-muted-foreground/40" />
-                  <p className="font-medium text-muted-foreground">Još nema prijava</p>
-                  <p className="text-sm text-muted-foreground">
-                    Predmeti koje pošaljete inspektoru bit će ovdje.
-                  </p>
-                </div>
-              )}
-
-              {reportedTotal > 0 && (
-                <section>
-                  <div className="px-5 pt-4 pb-2 flex items-center gap-2 sticky top-0 bg-background z-10 border-b">
-                    <FilePdf size={14} className="text-success" />
-                    <span className="text-xs font-semibold uppercase tracking-wide text-success">
-                      Prijavljeno inspektoru
-                    </span>
-                    <Badge className="ml-auto bg-success/10 text-success border-success/20 text-xs">
-                      {reportedTotal}
-                    </Badge>
-                  </div>
-                  <div className="divide-y">
-                    {reportedFlags.map((flag) => (
-                      <ReportedRow
-                        key={flag.id}
-                        kind="flag"
-                        title={flag.candidate_listings?.title ?? "—"}
-                        meta={flag.candidate_listings?.neighborhood ?? ""}
-                        href={`/dashboard/${flag.id}`}
-                        onUndo={() =>
-                          setResolved((prev) => {
-                            const { [flag.id]: _r, ...rest } = prev;
-                            void _r;
-                            return rest;
-                          })
-                        }
-                      />
-                    ))}
-                    {reportedMonitoring.map((alert) => (
-                      <ReportedRow
-                        key={alert.id}
-                        kind="monitoring"
-                        title={alert.name}
-                        meta={alert.neighborhood ?? ""}
-                        href={`/dashboard/registrirani/${alert.id}`}
-                        onUndo={() =>
-                          setResolved((prev) => {
-                            const { [alert.id]: _r, ...rest } = prev;
-                            void _r;
-                            return rest;
-                          })
-                        }
-                      />
-                    ))}
-                  </div>
-                </section>
-              )}
-
-              {dismissedFlags.length + dismissedMonitoring.length > 0 && (
-                <section className="mt-2 opacity-60">
-                  <div className="px-5 pt-4 pb-2 flex items-center gap-2 border-b">
-                    <X size={14} className="text-muted-foreground" />
-                    <span className="text-xs font-semibold uppercase tracking-wide text-muted-foreground">
-                      Odbačeno
-                    </span>
-                    <span className="ml-auto text-xs text-muted-foreground">
-                      {dismissedFlags.length + dismissedMonitoring.length}
-                    </span>
-                  </div>
-                  <div className="divide-y">
-                    {dismissedFlags.map((flag) => (
-                      <div key={flag.id} className="px-5 py-3 flex items-center gap-3">
-                        <X size={14} className="text-muted-foreground shrink-0" />
-                        <span className="text-sm text-muted-foreground line-through flex-1 truncate">
-                          {flag.candidate_listings?.title}
-                        </span>
-                      </div>
-                    ))}
-                    {dismissedMonitoring.map((alert) => (
-                      <div key={alert.id} className="px-5 py-3 flex items-center gap-3">
-                        <X size={14} className="text-muted-foreground shrink-0" />
-                        <span className="text-sm text-muted-foreground line-through flex-1 truncate">
-                          {alert.name}
-                        </span>
-                      </div>
-                    ))}
-                  </div>
-                </section>
-              )}
-            </>
-          )}
-
-          {/* Resolved inline (other tabs) — short summary at bottom */}
-          {!showReported && (resolvedList.length > 0 || resolvedMonitoring.length > 0) && (
-            <button
-              type="button"
-              onClick={() => setActiveTab("prijavljeni")}
-              className="mt-4 mx-5 mb-4 px-3 py-2 rounded-md border text-xs text-muted-foreground hover:bg-muted/40 transition-colors text-left flex items-center gap-2"
-            >
-              <CheckCircle size={12} className="text-muted-foreground" />
-              {resolvedList.length + resolvedMonitoring.length} riješeno · klikni za pregled
-            </button>
-          )}
         </div>
 
         {/* Right: 3D map */}
@@ -461,45 +373,6 @@ export function DashboardClient({ flags, monitoringAlerts = [] }: Props) {
 
 /* ─── Flag card ─────────────────────────────────────────────────────────── */
 
-function ReportedRow({
-  kind,
-  title,
-  meta,
-  href,
-  onUndo,
-}: {
-  kind: "flag" | "monitoring";
-  title: string;
-  meta: string;
-  href: string;
-  onUndo: () => void;
-}) {
-  return (
-    <div className="px-5 py-3 flex items-center gap-3">
-      <FilePdf size={14} className="text-success shrink-0" />
-      <div className="flex-1 min-w-0">
-        <a href={href} className="text-sm font-medium hover:underline block truncate">
-          {title}
-        </a>
-        <div className="flex items-center gap-2 text-xs text-muted-foreground">
-          <Badge variant="outline" className="text-[10px] px-1.5 py-0">
-            {kind === "flag" ? "Oglas" : "Registrirani"}
-          </Badge>
-          {meta && <span>{meta}</span>}
-        </div>
-      </div>
-      <Button
-        size="sm"
-        variant="ghost"
-        className="h-7 text-xs text-muted-foreground"
-        onClick={onUndo}
-      >
-        Vrati
-      </Button>
-    </div>
-  );
-}
-
 function FlagCard({
   flag,
   variant,
@@ -515,8 +388,17 @@ function FlagCard({
 
   return (
     <div
+      onClick={onOpen}
+      role="button"
+      tabIndex={0}
+      onKeyDown={(e) => {
+        if (e.key === "Enter" || e.key === " ") {
+          e.preventDefault();
+          onOpen();
+        }
+      }}
       className={cn(
-        "px-5 py-4 flex gap-4 hover:bg-muted/40 transition-colors",
+        "px-5 py-4 flex gap-4 hover:bg-muted/40 transition-colors cursor-pointer focus:outline-none focus:bg-muted/40",
         variant === "auto" ? "border-l-2 border-l-destructive" : "border-l-2 border-l-amber-400"
       )}
     >
@@ -532,10 +414,7 @@ function FlagCard({
             </span>
           )}
         </div>
-        <p
-          className="text-sm font-medium truncate cursor-pointer hover:underline"
-          onClick={onOpen}
-        >
+        <p className="text-sm font-medium truncate">
           {listing?.title ?? "—"}
         </p>
         <div className="flex items-center gap-3 text-xs text-muted-foreground">
@@ -556,7 +435,10 @@ function FlagCard({
       </div>
 
       {/* Right: actions */}
-      <div className="flex flex-col gap-1.5 shrink-0 justify-center">
+      <div
+        className="flex flex-col gap-1.5 shrink-0 justify-center"
+        onClick={(e) => e.stopPropagation()}
+      >
         {variant === "auto" ? (
           <>
             <Button
@@ -796,7 +678,18 @@ function MonitoringCard({
   const meta = MONITORING_META[alert.status];
 
   return (
-    <div className="px-5 py-4 flex gap-4 hover:bg-muted/40 transition-colors border-l-2 border-l-destructive">
+    <div
+      onClick={onOpen}
+      role="button"
+      tabIndex={0}
+      onKeyDown={(e) => {
+        if (e.key === "Enter" || e.key === " ") {
+          e.preventDefault();
+          onOpen();
+        }
+      }}
+      className="px-5 py-4 flex gap-4 hover:bg-muted/40 transition-colors border-l-2 border-l-destructive cursor-pointer focus:outline-none focus:bg-muted/40"
+    >
       <div className="flex-1 min-w-0 space-y-1.5">
         <div className="flex items-center gap-2 flex-wrap">
           <Badge className="bg-destructive/10 text-destructive border-destructive/20 text-xs">
@@ -812,12 +705,7 @@ function MonitoringCard({
             </span>
           )}
         </div>
-        <p
-          className="text-sm font-medium truncate cursor-pointer hover:underline"
-          onClick={onOpen}
-        >
-          {alert.name}
-        </p>
+        <p className="text-sm font-medium truncate">{alert.name}</p>
         <div className="flex items-center gap-3 text-xs text-muted-foreground flex-wrap">
           {alert.owner && <span>{alert.owner}</span>}
           <span className="flex items-center gap-1">
@@ -832,7 +720,10 @@ function MonitoringCard({
         </div>
       </div>
 
-      <div className="flex flex-col gap-1.5 shrink-0 justify-center">
+      <div
+        className="flex flex-col gap-1.5 shrink-0 justify-center"
+        onClick={(e) => e.stopPropagation()}
+      >
         <Button
           size="sm"
           className="gap-1.5 h-7 text-xs"
