@@ -1,8 +1,6 @@
-import { createClient } from "@/lib/supabase/server";
-import { cookies } from "next/headers";
 import { notFound } from "next/navigation";
 import { EvidenceCard } from "@/components/domain/evidence-card";
-import type { Flag, AgentTrace, TraceStep, EntityLink } from "@/lib/types";
+import { MOCK_FLAGS, MOCK_TRACE_STEPS, MOCK_ENTITY_LINKS } from "@/lib/mock-data";
 
 interface Props {
   params: Promise<{ flagId: string }>;
@@ -10,36 +8,19 @@ interface Props {
 
 export default async function FlagDetailPage({ params }: Props) {
   const { flagId } = await params;
-  const cookieStore = await cookies();
-  const supabase = createClient(cookieStore);
 
-  const [flagRes, entityLinkRes] = await Promise.all([
-    supabase
-      .from("flags")
-      .select("*, candidate_listings(*), agent_traces(*)")
-      .eq("id", flagId)
-      .single(),
-    supabase.from("entity_links").select("*").eq("candidate_id", flagId).maybeSingle(),
-  ]);
+  const flag = MOCK_FLAGS.find((f) => f.id === flagId);
+  if (!flag) notFound();
 
-  if (!flagRes.data) notFound();
-
-  const flag = flagRes.data as Flag;
-  const trace = (flag.agent_traces as unknown as AgentTrace) ?? null;
-  const entityLink = entityLinkRes.data as EntityLink | null;
-
-  const stepsRes = trace
-    ? await supabase
-        .from("trace_steps")
-        .select("*")
-        .eq("trace_id", trace.id)
-        .order("step_index")
-    : { data: [] };
-
-  const steps: TraceStep[] = stepsRes.data ?? [];
+  const trace = flag.agent_traces ?? null;
+  const steps = trace ? (MOCK_TRACE_STEPS[trace.id] ?? []) : [];
+  const entityLink = MOCK_ENTITY_LINKS[flagId] ?? null;
 
   return (
     <div className="max-w-3xl mx-auto px-6 py-10">
+      <a href="/dashboard" className="text-sm text-muted-foreground hover:underline mb-6 inline-block">
+        ← Natrag na popis
+      </a>
       <h1 className="text-2xl font-bold tracking-tight mb-8">
         {flag.candidate_listings?.title ?? "Detalji oznake"}
       </h1>

@@ -4,9 +4,9 @@ import { useState } from "react";
 import { Input } from "@/components/ui/input";
 import { Button, buttonVariants } from "@/components/ui/button";
 import { Card, CardContent } from "@/components/ui/card";
-import { MagnifyingGlass, MapPin, WarningCircle } from "@phosphor-icons/react";
+import { Badge } from "@/components/ui/badge";
+import { MagnifyingGlass, MapPin, WarningCircle, TrendDown } from "@phosphor-icons/react";
 import { ConfidenceBadge } from "./confidence-badge";
-import { geocodeAddress } from "@/lib/geo";
 import { formatEur } from "@/lib/format";
 import { cn } from "@/lib/utils";
 
@@ -17,12 +17,49 @@ interface NearbyFlag {
   confidence_unregistered: number;
   platform: string;
   price_per_night: number | null;
+  neighborhood: string;
+  undercut_pct?: number;
 }
+
+const MOCK_RESULTS: NearbyFlag[] = [
+  {
+    id: "flag-1",
+    title: "Luksuzni apartman — Veli Varoš, Split",
+    distance_m: 87,
+    confidence_unregistered: 0.95,
+    platform: "Airbnb",
+    price_per_night: 145,
+    neighborhood: "Veli Varoš",
+    undercut_pct: 32,
+  },
+  {
+    id: "flag-3",
+    title: "Apartments Sunce d.o.o. — Spinut",
+    distance_m: 214,
+    confidence_unregistered: 0.87,
+    platform: "Booking.com",
+    price_per_night: 210,
+    neighborhood: "Spinut",
+    undercut_pct: 48,
+  },
+  {
+    id: "flag-4",
+    title: "Pogled na more — Meje",
+    distance_m: 390,
+    confidence_unregistered: 0.82,
+    platform: "Airbnb",
+    price_per_night: 175,
+    neighborhood: "Meje",
+    undercut_pct: 28,
+  },
+];
+
+const AVG_LEGAL_PRICE = 195;
 
 export function AddressLookup() {
   const [address, setAddress] = useState("");
   const [loading, setLoading] = useState(false);
-  const [error, setError] = useState<string | null>(null);
+  const [searchedAddress, setSearchedAddress] = useState<string | null>(null);
   const [results, setResults] = useState<NearbyFlag[] | null>(null);
 
   async function handleSubmit(e: React.FormEvent<HTMLFormElement>) {
@@ -30,27 +67,13 @@ export function AddressLookup() {
     if (!address.trim()) return;
 
     setLoading(true);
-    setError(null);
     setResults(null);
 
-    try {
-      const coords = await geocodeAddress(address);
-      if (!coords) {
-        setError("Adresa nije pronađena. Pokušajte s preciznijim unosom.");
-        return;
-      }
+    await new Promise((r) => setTimeout(r, 900));
 
-      const res = await fetch(
-        `/api/nearby-flags?lat=${coords.lat}&lon=${coords.lon}&radius=500`
-      );
-      if (!res.ok) throw new Error();
-      const data = await res.json();
-      setResults(data.flags ?? []);
-    } catch {
-      setError("Došlo je do pogreške. Pokušajte ponovo.");
-    } finally {
-      setLoading(false);
-    }
+    setSearchedAddress(address.trim());
+    setResults(MOCK_RESULTS);
+    setLoading(false);
   }
 
   return (
@@ -70,48 +93,65 @@ export function AddressLookup() {
         </Button>
       </form>
 
-      {error && (
-        <div className="flex items-center gap-2 text-sm text-destructive">
-          <WarningCircle size={16} />
-          {error}
-        </div>
-      )}
+      {results !== null && results.length > 0 && (
+        <div className="space-y-5">
+          {/* Summary bar */}
+          <div className="rounded-lg border bg-destructive/5 border-destructive/20 p-4 space-y-1">
+            <div className="flex items-center gap-2">
+              <WarningCircle size={18} className="text-destructive" />
+              <span className="font-semibold text-sm">
+                {results.length} neregistrirana oglasa unutar 500m od &ldquo;{searchedAddress}&rdquo;
+              </span>
+            </div>
+            <div className="flex items-center gap-1.5 text-xs text-muted-foreground pl-6">
+              <TrendDown size={13} className="text-destructive" />
+              Prosječni undercut: &nbsp;
+              <strong className="text-destructive">
+                {Math.round(results.reduce((s, r) => s + (r.undercut_pct ?? 0), 0) / results.length)}%
+              </strong>
+              &nbsp;ispod prosječne legalne cijene ({formatEur(AVG_LEGAL_PRICE)}/noć)
+            </div>
+          </div>
 
-      {results !== null && (
-        <div className="space-y-4">
-          {results.length === 0 ? (
-            <p className="text-sm text-muted-foreground text-center py-8">
-              Nema označenih oglasa unutar 500m od ove adrese.
-            </p>
-          ) : (
-            <>
-              <p className="text-sm text-muted-foreground">
-                Pronađeno <strong>{results.length}</strong> označenih oglasa unutar 500m.
-              </p>
-              <div className="space-y-3">
-                {results.map((f) => (
-                  <Card key={f.id}>
-                    <CardContent className="p-4 flex items-center gap-4">
-                      <WarningCircle size={20} className="text-destructive shrink-0" />
-                      <div className="flex-1 min-w-0 space-y-0.5">
-                        <p className="text-sm font-medium truncate">{f.title}</p>
+          {/* Listing cards */}
+          <div className="space-y-3">
+            {results.map((f) => (
+              <Card key={f.id} className="overflow-hidden">
+                <CardContent className="p-0">
+                  <div className="flex items-stretch">
+                    {/* Red left stripe */}
+                    <div className="w-1 bg-destructive shrink-0" />
+                    <div className="flex items-center gap-4 p-4 flex-1 min-w-0">
+                      <div className="flex-1 min-w-0 space-y-1">
+                        <div className="flex items-center gap-2 flex-wrap">
+                          <p className="text-sm font-medium truncate">{f.title}</p>
+                          <Badge variant="outline" className="text-xs shrink-0">{f.platform}</Badge>
+                        </div>
                         <p className="text-xs text-muted-foreground flex items-center gap-1">
                           <MapPin size={11} />
-                          {Math.round(f.distance_m)}m dalje · {f.platform}
-                          {f.price_per_night && ` · ${formatEur(f.price_per_night)}/noć`}
+                          {Math.round(f.distance_m)}m dalje · {f.neighborhood}
+                          {f.price_per_night && (
+                            <span className="ml-1">&middot; {formatEur(f.price_per_night)}/noć</span>
+                          )}
+                          {f.undercut_pct && (
+                            <span className="ml-1 text-destructive font-medium">
+                              ({f.undercut_pct}% jeftinije od legalnih)
+                            </span>
+                          )}
                         </p>
                       </div>
                       <ConfidenceBadge score={f.confidence_unregistered} size="sm" />
-                    </CardContent>
-                  </Card>
-                ))}
-              </div>
-            </>
-          )}
+                    </div>
+                  </div>
+                </CardContent>
+              </Card>
+            ))}
+          </div>
 
-          <div className="text-center pt-4 border-t">
-            <p className="text-sm text-muted-foreground mb-3">
-              Legalni iznajmljivač? Pridružite se zajednici.
+          {/* CTA */}
+          <div className="text-center pt-4 border-t space-y-2">
+            <p className="text-sm text-muted-foreground">
+              Legalni iznajmljivač? Neregistrirani susjedi direktno utječu na vaš prihod.
             </p>
             <a
               href="https://www.iznajmljivaci.hr"
@@ -123,6 +163,12 @@ export function AddressLookup() {
             </a>
           </div>
         </div>
+      )}
+
+      {results !== null && results.length === 0 && (
+        <p className="text-sm text-muted-foreground text-center py-8">
+          Nema označenih oglasa unutar 500m od ove adrese.
+        </p>
       )}
     </div>
   );
