@@ -2,6 +2,7 @@
 
 import React, { useState, useMemo } from "react";
 import { useResolved, type Resolution } from "@/lib/resolved-store";
+import { toast } from "sonner";
 import {
   Sheet,
   SheetContent,
@@ -121,6 +122,7 @@ export function DashboardClient({ flags, monitoringAlerts = [] }: Props) {
   function resolve(id: string, how: Resolution) {
     const flag = flags.find((f) => f.id === id);
     const alert = monitoringAlerts.find((m) => m.id === id);
+    const title = flag?.candidate_listings?.title ?? alert?.name ?? "predmet";
     if (flag) {
       storeResolve({
         id,
@@ -142,6 +144,30 @@ export function DashboardClient({ flags, monitoringAlerts = [] }: Props) {
     }
     if (selectedId === id) setSelectedId(null);
     if (selectedMonitoringId === id) setSelectedMonitoringId(null);
+
+    toast.success(
+      how === "reported"
+        ? `Prijava poslana inspektoru`
+        : `Predmet odbačen`,
+      {
+        description: title,
+        action: {
+          label: "Vrati",
+          onClick: () => {
+            // Restore: clear the resolution
+            const next = Object.fromEntries(
+              Object.entries(resolvedItems).filter(([k]) => k !== id)
+            );
+            void next;
+            window.localStorage.setItem(
+              "bijeli-najam:resolved-v1",
+              JSON.stringify(next)
+            );
+            window.dispatchEvent(new CustomEvent("bijeli-najam:resolved-change"));
+          },
+        },
+      }
+    );
   }
 
   return (

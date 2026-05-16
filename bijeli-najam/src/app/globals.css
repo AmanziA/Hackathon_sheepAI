@@ -146,15 +146,37 @@
 }
 
 @layer utilities {
-  /* Paper texture — warm cream background with a faint grid that recalls
-     architectural drafting paper. Subtle enough to fade into surfaces. */
+  /* Paper texture — warm cream background with a faint architectural-drafting
+     dot grid + an even fainter offset grid line for measured-paper feel. */
   .bg-paper {
     background-color: oklch(0.985 0.005 80);
     background-image:
-      radial-gradient(circle at 1px 1px, hsl(0 0% 50% / 0.06) 1px, transparent 0),
+      radial-gradient(circle at 1px 1px, hsl(0 0% 50% / 0.07) 1px, transparent 0),
+      linear-gradient(to right, hsl(0 0% 50% / 0.025) 1px, transparent 1px),
+      linear-gradient(to bottom, hsl(0 0% 50% / 0.025) 1px, transparent 1px),
       linear-gradient(180deg, hsl(0 0% 100% / 0.4) 0%, transparent 60%);
-    background-size: 22px 22px, 100% 100%;
-    background-position: 0 0, 0 0;
+    background-size: 22px 22px, 110px 110px, 110px 110px, 100% 100%;
+    background-position: 0 0, 0 0, 0 0, 0 0;
+  }
+
+  /* Decorative ruler tick marks on the bottom-left edge of a container.
+     Pure CSS — six small orange ticks descending in length, very subtle. */
+  .ruler-corner {
+    position: relative;
+  }
+  .ruler-corner::after {
+    content: "";
+    position: absolute;
+    left: 16px;
+    bottom: 16px;
+    width: 60px;
+    height: 1px;
+    background-image: repeating-linear-gradient(
+      to right,
+      hsl(28 85% 55% / 0.5) 0 1px,
+      transparent 1px 9px
+    );
+    pointer-events: none;
   }
 
   /* Pulsing ring for highlighted markers / pending status indicators */
@@ -203,5 +225,33 @@
       hsl(0 0% 95%) 100%);
     background-size: 200% 100%;
     animation: shimmer 1.6s linear infinite;
+  }
+
+  /* Thinking dots — three dots that fade in sequence (agent activity).
+     Drop into <span class="thinking-dots"><i/><i/><i/></span>. */
+  @keyframes thinking-bounce {
+    0%, 60%, 100% { transform: translateY(0); opacity: 0.35; }
+    30% { transform: translateY(-3px); opacity: 1; }
+  }
+  .thinking-dots {
+    display: inline-flex;
+    gap: 3px;
+    align-items: center;
+  }
+  .thinking-dots > i {
+    display: inline-block;
+    width: 4px;
+    height: 4px;
+    border-radius: 9999px;
+    background: currentColor;
+    animation: thinking-bounce 1.2s ease-in-out infinite;
+  }
+  .thinking-dots > i:nth-child(2) { animation-delay: 0.15s; }
+  .thinking-dots > i:nth-child(3) { animation-delay: 0.3s; }
+
+  /* Animated underline for active tab indicators */
+  @keyframes tab-slide-in {
+    from { transform: scaleX(0); }
+    to { transform: scaleX(1); }
   }
 }

@@ -2,6 +2,8 @@ import { cookies } from "next/headers";
 import { StatNumber } from "@/components/domain/stat-number";
 import { NeighborhoodBar } from "@/components/domain/neighborhood-bar";
 import { ImpactMap } from "@/components/domain/impact-map";
+import { SectionHead } from "@/components/domain/section-head";
+import { DashedDivider } from "@/components/domain/dashed-divider";
 import { createClient } from "@/utils/supabase/server";
 import type { Neighborhood } from "@/lib/types";
 
@@ -45,13 +47,12 @@ export default async function ImpactPage() {
 
   return (
     <div className="max-w-7xl mx-auto px-6 py-10 space-y-10">
-      <div className="space-y-1">
-        <h1 className="text-3xl font-bold tracking-tight">Statistika — Split</h1>
-        <p className="text-muted-foreground text-sm">
-          Procijenjeni godišnji fiskalni gubitak od neregistriranih iznajmljivača.
-          {usingMock ? " · indikativni mock podaci dok se baza ne popuni" : ""}
-        </p>
-      </div>
+      <SectionHead
+        eyebrow="Statistika · Split"
+        title="Fiskalni utjecaj neregistriranog najma"
+        description={`Procijenjeni godišnji gubitak grada od oglasa kojih nema u HTZ registru.${usingMock ? " Indikativni mock podaci dok se baza ne popuni." : ""}`}
+        size="lg"
+      />
 
       <div className="grid grid-cols-3 gap-8">
         <StatNumber value={flagCount} label="Označenih oglasa u Splitu" />
@@ -59,24 +60,35 @@ export default async function ImpactPage() {
         <StatNumber value={neighborhoods.length} label="Zahvaćenih kvartova" />
       </div>
 
-      <div className="space-y-3">
-        <h2 className="text-xl font-semibold tracking-tight">Mapa gubitaka po kvartu</h2>
-        <p className="text-sm text-muted-foreground">
-          Visina stupa = godišnji gubitak. Crveno = najviše. Klikni / hover za detalje.
-        </p>
+      <DashedDivider tone="orange" />
+
+      <div className="space-y-4">
+        <SectionHead
+          eyebrow="Geografski"
+          title="Mapa gubitaka po kvartu"
+          description="Visina stupa = godišnji gubitak. Crveno = najviše. Klikni ili lebdi za detalje."
+        />
         <ImpactMap neighborhoods={neighborhoods} />
       </div>
 
-      <div className="space-y-4">
-        <h2 className="text-xl font-semibold tracking-tight">Po kvartovima</h2>
+      <DashedDivider tone="orange" />
+
+      <div className="space-y-5">
+        <SectionHead
+          eyebrow="Rang lista"
+          title="Po kvartovima"
+          description="Sortirano po procijenjenom gubitku."
+        />
         <div className="space-y-4">
-          {neighborhoods.map((n) => (
-            <NeighborhoodBar key={n.slug} neighborhood={n} maxLoss={maxLoss} />
+          {neighborhoods.map((n, i) => (
+            <NeighborhoodBar key={n.slug} neighborhood={n} maxLoss={maxLoss} rank={i + 1} />
           ))}
         </div>
       </div>
 
-      <p className="text-xs text-muted-foreground border-t pt-4">
+      <DashedDivider />
+
+      <p className="text-xs text-muted-foreground pt-2">
         Metodologija: procijenjeni gubitak uključuje boravišnu pristojbu, paušalni porez i turističku
         članarinu po prosječnom broju noćenja za kategoriju smještaja. Podaci su indikativni i ne
         predstavljaju pravno obvezujuću procjenu.

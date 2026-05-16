@@ -19,6 +19,7 @@ import { useState } from "react";
 import { cn } from "@/lib/utils";
 import { MOCK_FLAGS } from "@/lib/mock-data";
 import { InvestigationOverlay } from "@/components/domain/investigation-overlay";
+import { CommandPalette } from "@/components/domain/command-palette";
 
 interface Props {
   children: React.ReactNode;
@@ -49,7 +50,7 @@ export function AppShell({ children }: Props) {
           <span className="font-semibold text-sm tracking-tight">Bijeli Najam</span>
         </Link>
 
-        <div className="px-3 py-3 border-b">
+        <div className="px-3 py-3 border-b space-y-2">
           <button
             onClick={() => setRunning(true)}
             disabled={running}
@@ -66,6 +67,10 @@ export function AppShell({ children }: Props) {
             />
             Pokreni istragu
           </button>
+          <div className="flex items-center justify-center gap-1.5 text-[10px] text-muted-foreground/70">
+            <span>Idi na</span>
+            <kbd className="font-mono px-1 py-0.5 rounded-sm border border-border bg-muted/40 text-[9px] leading-none">⌘K</kbd>
+          </div>
         </div>
 
         <nav className="flex-1 px-2 py-4 flex flex-col gap-0.5">
@@ -156,6 +161,8 @@ export function AppShell({ children }: Props) {
           onDone={() => setRunning(false)}
         />
       )}
+
+      <CommandPalette />
     </div>
   );
 }

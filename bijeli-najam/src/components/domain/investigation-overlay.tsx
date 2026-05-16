@@ -92,9 +92,14 @@ export function InvestigationOverlay({ total, onCancel, onDone }: Props) {
     <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/40 backdrop-blur-sm p-4">
       <div className="bg-card w-full max-w-lg rounded-lg border shadow-lg overflow-hidden">
         <header className="flex items-center justify-between gap-3 px-5 py-3 border-b">
-          <div className="flex items-center gap-2">
-            <ArrowsClockwise size={16} className="text-primary animate-spin" />
+          <div className="flex items-center gap-2.5">
+            <span className="w-1.5 h-1.5 rounded-full bg-[hsl(28_85%_55%)] pulse-ring" aria-hidden />
             <h2 className="text-sm font-semibold">Pokrenuta istraga agenta</h2>
+            <span className="thinking-dots text-primary" aria-label="Radim">
+              <i />
+              <i />
+              <i />
+            </span>
           </div>
           <button
             type="button"

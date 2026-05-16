@@ -1,5 +1,6 @@
 import type { Metadata } from "next";
 import { Archivo, JetBrains_Mono } from "next/font/google";
+import { Toaster } from "sonner";
 import "./globals.css";
 
 const archivo = Archivo({
@@ -27,7 +28,19 @@ export default function RootLayout({
 }>) {
   return (
     <html lang="hr" className={`${archivo.variable} ${jetbrainsMono.variable} h-full antialiased`}>
-      <body className="min-h-full flex flex-col bg-paper">{children}</body>
+      <body className="min-h-full flex flex-col bg-paper">
+        {children}
+        <Toaster
+          position="bottom-right"
+          theme="light"
+          toastOptions={{
+            className:
+              "!font-sans !rounded-sm !border !border-border !bg-card !text-foreground !shadow-md",
+          }}
+          gap={8}
+          offset={20}
+        />
+      </body>
     </html>
   );
 }
