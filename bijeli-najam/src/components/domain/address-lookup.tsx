@@ -26,8 +26,9 @@ const LookupMap = dynamic(() => import("./lookup-map").then((m) => m.LookupMap),
   ),
 });
 
-// Split viewbox (left, top, right, bottom) — constrains Nominatim search
-const SPLIT_VIEWBOX = "16.38,43.55,16.55,43.46";
+// Split bounding box (lon_min, lat_min, lon_max, lat_max) for Photon
+const SPLIT_BBOX = "16.30,43.42,16.62,43.58";
+const SPLIT_CENTER = { lat: 43.5081, lon: 16.4402 };
 
 type Tab = "flagged" | "registered" | "recent";
 
@@ -53,14 +54,14 @@ export function AddressLookup() {
   const skipNextFetch = useRef(false);
   const inputWrapRef = useRef<HTMLDivElement>(null);
 
-  // Debounced Nominatim autocomplete
+  // Debounced Photon autocomplete (OSM-based, designed for incremental search)
   useEffect(() => {
     const q = address.trim();
     if (skipNextFetch.current) {
       skipNextFetch.current = false;
       return;
     }
-    if (q.length < 3) {
+    if (q.length < 2) {
       setSuggestions([]);
       setSuggestOpen(false);
       return;
@@ -70,48 +71,74 @@ export function AddressLookup() {
     const timer = setTimeout(async () => {
       setSuggestLoading(true);
       try {
-        const url = new URL("https://nominatim.openstreetmap.org/search");
-        url.searchParams.set("q", `${q}, Split`);
-        url.searchParams.set("format", "jsonv2");
-        url.searchParams.set("addressdetails", "1");
-        url.searchParams.set("limit", "6");
-        url.searchParams.set("viewbox", SPLIT_VIEWBOX);
-        url.searchParams.set("bounded", "1");
-        url.searchParams.set("accept-language", "hr");
-        const res = await fetch(url.toString(), {
-          signal: ctrl.signal,
-          headers: { "Accept-Language": "hr" },
-        });
-        if (!res.ok) throw new Error("nominatim");
-        const data = (await res.json()) as Array<{
-          display_name: string;
-          lat: string;
-          lon: string;
-          osm_type: string;
-          osm_id: number;
-          address?: {
-            road?: string;
-            house_number?: string;
-            suburb?: string;
-            neighbourhood?: string;
-            city?: string;
-            town?: string;
-          };
-        }>;
-        const items: Suggestion[] = data.map((r) => {
-          const a = r.address ?? {};
-          const street = [a.road, a.house_number].filter(Boolean).join(" ");
-          const area = a.suburb ?? a.neighbourhood ?? a.city ?? a.town ?? "";
-          const short = street ? `${street}${area ? `, ${area}` : ""}` : r.display_name.split(",").slice(0, 2).join(", ");
-          return {
-            display: r.display_name,
-            short: short.trim(),
-            lat: Number(r.lat),
-            lon: Number(r.lon),
-            osm_type: r.osm_type,
-            osm_id: r.osm_id,
-          };
-        });
+        const url = new URL("https://photon.komoot.io/api/");
+        url.searchParams.set("q", q);
+        url.searchParams.set("lat", String(SPLIT_CENTER.lat));
+        url.searchParams.set("lon", String(SPLIT_CENTER.lon));
+        url.searchParams.set("bbox", SPLIT_BBOX);
+        url.searchParams.set("limit", "8");
+        url.searchParams.set("lang", "default");
+
+        const res = await fetch(url.toString(), { signal: ctrl.signal });
+        if (!res.ok) throw new Error("photon");
+        const data = (await res.json()) as {
+          features: Array<{
+            geometry: { coordinates: [number, number] };
+            properties: {
+              osm_id: number;
+              osm_type: "W" | "N" | "R";
+              osm_key?: string;
+              osm_value?: string;
+              type?: string;
+              name?: string;
+              street?: string;
+              housenumber?: string;
+              postcode?: string;
+              city?: string;
+              district?: string;
+              suburb?: string;
+              locality?: string;
+              county?: string;
+              country?: string;
+            };
+          }>;
+        };
+
+        const TYPE_MAP: Record<string, string> = { W: "way", N: "node", R: "relation" };
+
+        const items: Suggestion[] = data.features
+          .filter((f) => {
+            const p = f.properties;
+            const city = p.city ?? p.district ?? p.county ?? "";
+            const country = p.country ?? "";
+            // Keep only Croatian Split results (bbox already filters most)
+            return country.toLowerCase().includes("hrvat") || country.toLowerCase().includes("croatia") || /split/i.test(city);
+          })
+          .map((f) => {
+            const p = f.properties;
+            const [lon, lat] = f.geometry.coordinates;
+            const street =
+              p.housenumber && p.street
+                ? `${p.street} ${p.housenumber}`
+                : p.street ?? p.name ?? "";
+            const area = p.suburb ?? p.district ?? p.city ?? p.locality ?? "";
+            const primary = street && p.name && p.name !== p.street
+              ? `${p.name} · ${street}`
+              : street || p.name || "";
+            const short = [primary, area].filter(Boolean).join(", ");
+            const display = [primary, area, p.postcode, p.city ?? "Split", p.country]
+              .filter(Boolean)
+              .join(", ");
+            return {
+              display,
+              short: short || display,
+              lat,
+              lon,
+              osm_type: TYPE_MAP[p.osm_type] ?? p.osm_type,
+              osm_id: p.osm_id,
+            };
+          });
+
         setSuggestions(items);
         setSuggestOpen(items.length > 0);
         setActiveIdx(-1);
@@ -123,7 +150,7 @@ export function AddressLookup() {
       } finally {
         setSuggestLoading(false);
       }
-    }, 280);
+    }, 220);
 
     return () => {
       clearTimeout(timer);
