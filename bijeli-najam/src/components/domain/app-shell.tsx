@@ -75,8 +75,8 @@ export function AppShell({ children }: Props) {
             className={cn(
               "relative flex items-center gap-2.5 px-3 py-2 rounded-md text-sm transition-all duration-200 ease-out font-medium overflow-hidden",
               dashActive
-                ? "bg-muted text-foreground"
-                : "text-muted-foreground hover:text-foreground hover:bg-muted/60 hover:translate-x-px"
+                ? "bg-black/10 text-foreground"
+                : "text-muted-foreground hover:text-foreground hover:bg-black/5 hover:translate-x-px"
             )}
           >
             <WarningCircle
@@ -189,8 +189,8 @@ function NavItem({
         "flex items-center gap-2.5 py-2 rounded-md text-sm transition-all duration-200 ease-out",
         sub ? "px-4" : "px-3",
         active
-          ? "bg-muted text-foreground font-medium"
-          : "text-muted-foreground hover:text-foreground hover:bg-muted/60 hover:translate-x-px"
+          ? "bg-black/10 text-foreground font-medium"
+          : "text-muted-foreground hover:text-foreground hover:bg-black/5 hover:translate-x-px"
       )}
     >
       <IconComp size={15} weight={weight} />
