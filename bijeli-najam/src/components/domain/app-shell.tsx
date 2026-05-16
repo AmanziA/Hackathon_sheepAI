@@ -3,7 +3,6 @@
 import Link from "next/link";
 import { usePathname } from "next/navigation";
 import {
-  Buildings,
   CheckCircle,
   Globe,
   MagnifyingGlass,
@@ -15,6 +14,7 @@ import {
   type Icon,
   type IconWeight,
 } from "@phosphor-icons/react";
+import { LogoMark } from "@/components/domain/logo-mark";
 import { useState } from "react";
 import { cn } from "@/lib/utils";
 import { MOCK_FLAGS } from "@/lib/mock-data";
@@ -44,10 +44,10 @@ export function AppShell({ children }: Props) {
       <aside className="w-52 border-r bg-background/85 backdrop-blur-sm flex flex-col shrink-0">
         <Link
           href="/dashboard"
-          className="h-14 flex items-center gap-2.5 px-4 border-b group"
+          aria-label="Bijeli Najam — početna"
+          className="h-14 flex items-center px-4 border-b transition-opacity hover:opacity-80"
         >
-          <Buildings size={18} className="transition-transform duration-200 group-hover:rotate-[8deg]" />
-          <span className="font-semibold text-sm tracking-tight">Bijeli Najam</span>
+          <LogoMark variant="full" width={150} />
         </Link>
 
         <div className="px-3 py-3 border-b">
@@ -58,7 +58,7 @@ export function AppShell({ children }: Props) {
               "group w-full flex items-center gap-3 px-4 py-3 rounded-sm text-sm font-medium transition-all duration-200 ease-out",
               running
                 ? "bg-muted text-muted-foreground cursor-not-allowed"
-                : "bg-blue-100 hover:bg-blue-200 text-blue-900 shadow-sm hover:shadow-md hover:-translate-y-px active:translate-y-0"
+                : "bg-[var(--brand-blue-100)] hover:bg-[var(--brand-blue-300)] text-[var(--brand-blue-900)] shadow-sm hover:shadow-md hover:-translate-y-px active:translate-y-0"
             )}
           >
             <Intersect

@@ -54,33 +54,62 @@
 }
 
 :root {
-  /* Warm paper-cream background */
-  --background: oklch(0.985 0.005 80);
-  --foreground: oklch(0.145 0 0);
-  --card: oklch(1 0 0);
-  --card-foreground: oklch(0.145 0 0);
-  --popover: oklch(1 0 0);
-  --popover-foreground: oklch(0.145 0 0);
-  --primary: oklch(0.18 0 0);
-  --primary-foreground: oklch(0.985 0 0);
-  --secondary: oklch(0.965 0.005 80);
-  --secondary-foreground: oklch(0.205 0 0);
-  --muted: oklch(0.965 0.005 80);
-  --muted-foreground: oklch(0.5 0 0);
-  --accent: oklch(0.97 0 0);
-  --accent-foreground: oklch(0.205 0 0);
-  --destructive: oklch(0.577 0.245 27.325);
-  --destructive-foreground: oklch(0.985 0 0);
-  --success: oklch(0.51 0.12 145);
-  --success-foreground: oklch(0.985 0 0);
-  --warning: oklch(0.76 0.15 70);
-  --warning-foreground: oklch(0.145 0 0);
-  /* Accent stripe (drafting-paper orange) for highlights + secondary CTAs */
-  --accent-orange: oklch(0.68 0.16 45);
-  --accent-orange-foreground: oklch(0.985 0 0);
-  --border: oklch(0.922 0 0);
-  --input: oklch(0.922 0 0);
-  --ring: oklch(0.708 0 0);
+  /* Brand palette (Bijeli Najam — locked) */
+  --brand-orange-50:  #FFF7F1;
+  --brand-orange-100: #FFE7D5;
+  --brand-orange-300: #F9C59B;
+  --brand-orange-500: #FB8A2D;
+
+  --brand-blue-100:   #CEDDFC;
+  --brand-blue-300:   #97B6FA;
+  --brand-blue-500:   #336AE2;
+  --brand-blue-900:   #0C255C; /* deep ink from the logo wordmark */
+
+  --brand-purple-100: #E0D5F7;
+  --brand-purple-500: #9B85C5;
+
+  --brand-white:      #FFFFFF;
+  --brand-gray-50:    #F0F0F0;
+  --brand-gray-200:   #CED5DA;
+  --brand-gray-400:   #A2AEB6;
+  --brand-gray-600:   #5F6B74;
+  --brand-black:      #23242A;
+
+  /* Surfaces — warm paper cream */
+  --background: var(--brand-orange-50);
+  --foreground: var(--brand-black);
+  --card: var(--brand-white);
+  --card-foreground: var(--brand-black);
+  --popover: var(--brand-white);
+  --popover-foreground: var(--brand-black);
+
+  /* Primary brand = the deep blue from the logo */
+  --primary: var(--brand-blue-500);
+  --primary-foreground: var(--brand-white);
+
+  --secondary: var(--brand-gray-50);
+  --secondary-foreground: var(--brand-black);
+  --muted: var(--brand-gray-50);
+  --muted-foreground: var(--brand-gray-600);
+  --accent: var(--brand-orange-100);
+  --accent-foreground: var(--brand-black);
+
+  /* Status colors — use brand orange for warning, keep red/green for
+     destructive/success since the domain needs unambiguous signals */
+  --destructive: oklch(0.577 0.225 27.325);
+  --destructive-foreground: var(--brand-white);
+  --success: oklch(0.55 0.12 145);
+  --success-foreground: var(--brand-white);
+  --warning: var(--brand-orange-500);
+  --warning-foreground: var(--brand-black);
+
+  /* Accent stripe — exact brand orange for highlights + secondary CTAs */
+  --accent-orange: var(--brand-orange-500);
+  --accent-orange-foreground: var(--brand-white);
+
+  --border: var(--brand-gray-200);
+  --input: var(--brand-gray-200);
+  --ring: var(--brand-blue-500);
   --chart-1: oklch(0.87 0 0);
   --chart-2: oklch(0.556 0 0);
   --chart-3: oklch(0.439 0 0);
@@ -149,11 +178,11 @@
   /* Paper texture — warm cream background with a faint architectural-drafting
      dot grid + an even fainter offset grid line for measured-paper feel. */
   .bg-paper {
-    background-color: oklch(0.985 0.005 80);
+    background-color: var(--brand-orange-50);
     background-image:
-      radial-gradient(circle at 1px 1px, hsl(0 0% 50% / 0.07) 1px, transparent 0),
-      linear-gradient(to right, hsl(0 0% 50% / 0.025) 1px, transparent 1px),
-      linear-gradient(to bottom, hsl(0 0% 50% / 0.025) 1px, transparent 1px),
+      radial-gradient(circle at 1px 1px, color-mix(in oklch, var(--brand-gray-400) 40%, transparent) 1px, transparent 0),
+      linear-gradient(to right, color-mix(in oklch, var(--brand-gray-400) 12%, transparent) 1px, transparent 1px),
+      linear-gradient(to bottom, color-mix(in oklch, var(--brand-gray-400) 12%, transparent) 1px, transparent 1px),
       linear-gradient(180deg, hsl(0 0% 100% / 0.4) 0%, transparent 60%);
     background-size: 22px 22px, 110px 110px, 110px 110px, 100% 100%;
     background-position: 0 0, 0 0, 0 0, 0 0;

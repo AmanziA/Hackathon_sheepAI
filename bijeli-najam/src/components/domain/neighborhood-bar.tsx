@@ -47,10 +47,10 @@ export function NeighborhoodBar({ neighborhood, maxLoss, rank }: Props) {
             width: `${width}%`,
             background:
               tier === "high"
-                ? "linear-gradient(90deg, hsl(0 72% 45%) 0%, hsl(12 88% 55%) 60%, hsl(28 95% 58%) 100%)"
+                ? "linear-gradient(90deg, hsl(0 72% 45%) 0%, #FB8A2D 100%)"
                 : tier === "mid"
-                  ? "linear-gradient(90deg, hsl(28 85% 55%) 0%, hsl(38 92% 60%) 100%)"
-                  : "linear-gradient(90deg, hsl(38 60% 60%) 0%, hsl(50 50% 65%) 100%)",
+                  ? "linear-gradient(90deg, #FB8A2D 0%, #F9C59B 100%)"
+                  : "linear-gradient(90deg, #F9C59B 0%, #FFE7D5 100%)",
           }}
         />
         <div
