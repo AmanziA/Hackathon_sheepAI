@@ -64,6 +64,7 @@ create index if not exists idx_candidate_listings_latlon on candidate_listings (
 create table if not exists agent_traces (
   id                  uuid primary key default gen_random_uuid(),
   candidate_id        uuid references candidate_listings(id) on delete cascade,
+  registered_id       uuid references registered_units(id) on delete cascade,
   agent_type          text not null,
   model               text not null,
   step_count          int not null,
@@ -76,6 +77,11 @@ create table if not exists agent_traces (
   started_at          timestamptz not null,
   completed_at        timestamptz not null
 );
+
+-- Allow discovery traces that produced zero candidate matches (no candidate to point at).
+alter table agent_traces alter column candidate_id drop not null;
+alter table agent_traces add column if not exists registered_id uuid references registered_units(id) on delete cascade;
+create index if not exists idx_agent_traces_registered_id on agent_traces (registered_id, completed_at desc);
 
 -- 4. trace_steps
 create table if not exists trace_steps (

@@ -1,5 +1,131 @@
 from supabase import Client
 
+
+# =====================================================================
+# Discovery agent (z.ai / OpenAI-compatible) — function tool schema.
+# Used by agents/discovery.py.
+# =====================================================================
+DISCOVERY_TOOLS = [
+    {
+        "type": "function",
+        "function": {
+            "name": "search_web",
+            "description": "Search the open web (Tavily). Use this FIRST to find Booking/Airbnb/Vrbo listings of the registered property. Construct queries from owner name, street + number, neighborhood, and the word 'Split'. Optionally restrict to a single site with `site` (e.g. 'booking.com', 'airbnb.com', 'vrbo.com'). Returns up to N results with url, title, snippet.",
+            "parameters": {
+                "type": "object",
+                "properties": {
+                    "query": {"type": "string"},
+                    "site": {"type": "string", "description": "Optional domain restrict, e.g. 'booking.com'"},
+                    "max_results": {"type": "integer"},
+                },
+                "required": ["query"],
+            },
+        },
+    },
+    {
+        "type": "function",
+        "function": {
+            "name": "fetch_url",
+            "description": "Fetch a URL and return cleaned text. Use this to verify that a Booking/Airbnb URL really describes the registered property (street name, beds, host name should appear in the page text).",
+            "parameters": {
+                "type": "object",
+                "properties": {
+                    "url": {"type": "string", "description": "Full URL to fetch"},
+                    "max_chars": {"type": "integer", "description": "Max chars of text to return (default 8000)"},
+                },
+                "required": ["url"],
+            },
+        },
+    },
+    {
+        "type": "function",
+        "function": {
+            "name": "search_sudski_registar",
+            "description": "Look up a Croatian business in the public court registry. Returns OIB, directors, registered seat. Use ONLY when the registered owner field contains a legal form (d.o.o., d.d., j.d.o.o., obrt) — the director names are often the actual hosts on platforms.",
+            "parameters": {
+                "type": "object",
+                "properties": {
+                    "company_name": {"type": "string"},
+                },
+                "required": ["company_name"],
+            },
+        },
+    },
+    {
+        "type": "function",
+        "function": {
+            "name": "normalize_croatian",
+            "description": "Lowercase, strip Croatian diacritics, normalize kvart aliases. Pure helper for string comparison.",
+            "parameters": {
+                "type": "object",
+                "properties": {"text": {"type": "string"}},
+                "required": ["text"],
+            },
+        },
+    },
+    {
+        "type": "function",
+        "function": {
+            "name": "record_match",
+            "description": "Record one online listing you are confident matches the registered unit. Call once per matched URL. Do NOT call if you are not confident (confidence < 0.6).",
+            "parameters": {
+                "type": "object",
+                "properties": {
+                    "url": {"type": "string", "description": "Full listing URL"},
+                    "platform": {"type": "string", "enum": ["booking", "airbnb", "vrbo", "croatia.hr", "other"]},
+                    "external_id": {"type": "string", "description": "Platform-native id parsed from URL (optional)"},
+                    "title": {"type": "string"},
+                    "host_name": {"type": "string"},
+                    "neighborhood": {"type": "string"},
+                    "beds": {"type": "integer"},
+                    "confidence": {"type": "number", "description": "0.0-1.0"},
+                    "notes": {"type": "string", "description": "One-line reason (which signals fired)"},
+                },
+                "required": ["url", "confidence"],
+            },
+        },
+    },
+]
+
+
+def dispatch_discovery_tool(name: str, tool_input: dict, supabase: Client) -> dict:
+    """Execute a tool used by the discovery agent."""
+    if name == "search_web":
+        from tools.search_web import search_web
+        return search_web(**tool_input)
+
+    if name == "fetch_url":
+        from tools.fetch_url import fetch_url
+        return fetch_url(**tool_input)
+
+    if name == "search_sudski_registar":
+        from tools.search_sudski_registar import search_sudski_registar
+        result = search_sudski_registar(**tool_input)
+        if not result:
+            return {"found": False}
+        return {
+            "found": result.found,
+            "company_name": result.company_name,
+            "oib": result.oib,
+            "directors": result.directors,
+            "registered_seat": result.registered_seat,
+        }
+
+    if name == "normalize_croatian":
+        from tools.normalize_croatian import normalize_croatian
+        return {"normalized": normalize_croatian(**tool_input)}
+
+    if name == "record_match":
+        # Pure recording — handled in the agent loop. Return an ack so the
+        # model can move on.
+        return {"recorded": True}
+
+    return {"error": f"Unknown discovery tool: {name}"}
+
+
+# =====================================================================
+# Investigation agent (Anthropic) — original tools, unchanged shape.
+# =====================================================================
 TOOLS = [
     {
         "name": "search_htz_registry",
