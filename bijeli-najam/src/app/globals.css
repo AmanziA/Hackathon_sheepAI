@@ -75,8 +75,8 @@
   --brand-gray-600:   #5F6B74;
   --brand-black:      #23242A;
 
-  /* Surfaces — warm paper cream */
-  --background: var(--brand-orange-50);
+  /* Surfaces — clean white */
+  --background: var(--brand-white);
   --foreground: var(--brand-black);
   --card: var(--brand-white);
   --card-foreground: var(--brand-black);
@@ -178,7 +178,7 @@
   /* Paper texture — warm cream background with a faint architectural-drafting
      dot grid + an even fainter offset grid line for measured-paper feel. */
   .bg-paper {
-    background-color: var(--brand-orange-50);
+    background-color: var(--brand-white);
   }
 
   /* Decorative ruler tick marks on the bottom-left edge of a container.
