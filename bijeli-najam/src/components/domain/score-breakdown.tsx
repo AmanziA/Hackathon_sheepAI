@@ -1,4 +1,4 @@
-import { MapPin, Image, TextAa, Buildings, CheckCircle, WarningCircle } from "@phosphor-icons/react";
+import { MapPin, Image, TextAa, Buildings, CheckCircle, WarningCircle } from "@phosphor-icons/react/dist/ssr";
 import { cn } from "@/lib/utils";
 import type { EntityLink } from "@/lib/types";
 

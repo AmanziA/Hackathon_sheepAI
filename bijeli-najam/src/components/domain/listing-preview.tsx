@@ -1,6 +1,6 @@
 import { Badge } from "@/components/ui/badge";
 import { Card, CardContent } from "@/components/ui/card";
-import { MapPin, ArrowSquareOut, Buildings } from "@phosphor-icons/react";
+import { MapPin, ArrowSquareOut, Buildings } from "@phosphor-icons/react/dist/ssr";
 import type { CandidateListing } from "@/lib/types";
 import { formatEur } from "@/lib/format";
 
