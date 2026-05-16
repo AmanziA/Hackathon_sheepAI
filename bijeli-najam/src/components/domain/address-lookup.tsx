@@ -3,7 +3,7 @@
 import { useEffect, useRef, useState } from "react";
 import dynamic from "next/dynamic";
 import { Input } from "@/components/ui/input";
-import { Button, buttonVariants } from "@/components/ui/button";
+import { Button } from "@/components/ui/button";
 import { Badge } from "@/components/ui/badge";
 import {
   MagnifyingGlass,
@@ -11,8 +11,6 @@ import {
   WarningCircle,
   TrendDown,
   CheckCircle,
-  CurrencyEur,
-  ChartLineUp,
   Clock,
   Spinner,
 } from "@phosphor-icons/react";
@@ -278,7 +276,6 @@ export function AddressLookup() {
           {/* RIGHT: snapshot + cost + tabs */}
           <div className="lg:order-2 order-1 space-y-4">
             <SnapshotCard result={result} />
-            <CostCard result={result} />
 
             <div className="rounded-lg border overflow-hidden">
               <div className="flex items-center gap-1 border-b px-2 py-1.5 bg-muted/30">
@@ -320,21 +317,6 @@ export function AddressLookup() {
                 )}
               </div>
             </div>
-          </div>
-
-          {/* BELOW (full width): CTA */}
-          <div className="lg:col-span-2 text-center pt-2 border-t space-y-2">
-            <p className="text-sm text-muted-foreground">
-              Legalni iznajmljivač? Neregistrirani susjedi direktno utječu na vaš prihod.
-            </p>
-            <a
-              href="https://www.iznajmljivaci.hr"
-              target="_blank"
-              rel="noopener noreferrer"
-              className={cn(buttonVariants({ variant: "outline" }))}
-            >
-              Pridruži se Klubu Iznajmljivača Hrvatske
-            </a>
           </div>
         </div>
       )}
@@ -384,30 +366,6 @@ function SnapshotCard({ result }: { result: LookupResult }) {
         — <strong>{snapshot.avg_undercut_pct}%</strong> ispod prosječne legalne cijene (
         {formatEur(snapshot.avg_legal_price)}/noć).
       </div>
-    </div>
-  );
-}
-
-function CostCard({ result }: { result: LookupResult }) {
-  return (
-    <div className="rounded-lg border border-destructive/30 bg-destructive/5 p-4 space-y-2">
-      <div className="flex items-center gap-2">
-        <ChartLineUp size={14} className="text-destructive" />
-        <span className="text-xs uppercase tracking-wide text-destructive font-semibold">
-          Koliko vas to košta
-        </span>
-      </div>
-      <div className="flex items-baseline gap-2">
-        <CurrencyEur size={20} className="text-destructive" />
-        <p className="text-3xl font-bold tracking-tight tabular-nums">
-          {formatEur(result.estimated_loss_eur_per_year)}
-        </p>
-        <span className="text-sm text-muted-foreground">procijenjeno godišnje</span>
-      </div>
-      <p className="text-xs text-muted-foreground leading-relaxed">
-        Procjena utjecaja na legalnog iznajmljivača u vašem kvartu — temeljeno na razlici u
-        cijeni neregistriranih ponuda i prosjeku ~140 iznajmljenih noći godišnje.
-      </p>
     </div>
   );
 }
