@@ -55,7 +55,7 @@ export function AppShell({ children }: Props) {
             onClick={() => setRunning(true)}
             disabled={running}
             className={cn(
-              "group w-full flex items-center gap-3 px-4 py-3 rounded-sm text-sm font-semibold transition-colors duration-150 ease-out",
+              "group w-full flex items-center gap-3 px-4 py-3 rounded-lg text-sm font-semibold transition-colors duration-150 ease-out",
               running
                 ? "bg-muted text-muted-foreground cursor-not-allowed"
                 : "bg-[var(--brand-blue-500)] hover:bg-[color-mix(in_oklch,var(--brand-blue-500)_92%,black)] text-white"
@@ -75,8 +75,8 @@ export function AppShell({ children }: Props) {
             className={cn(
               "relative flex items-center gap-2.5 px-3 py-2 rounded-md text-sm transition-all duration-200 ease-out font-medium overflow-hidden",
               dashActive
-                ? "bg-foreground text-background shadow-sm"
-                : "text-muted-foreground hover:text-foreground hover:bg-muted hover:translate-x-px"
+                ? "bg-muted text-foreground"
+                : "text-muted-foreground hover:text-foreground hover:bg-muted/60 hover:translate-x-px"
             )}
           >
             <WarningCircle
@@ -189,8 +189,8 @@ function NavItem({
         "flex items-center gap-2.5 py-2 rounded-md text-sm transition-all duration-200 ease-out",
         sub ? "px-4" : "px-3",
         active
-          ? "bg-foreground text-background font-medium shadow-sm"
-          : "text-muted-foreground hover:text-foreground hover:bg-muted hover:translate-x-px"
+          ? "bg-muted text-foreground font-medium"
+          : "text-muted-foreground hover:text-foreground hover:bg-muted/60 hover:translate-x-px"
       )}
     >
       <IconComp size={15} weight={weight} />

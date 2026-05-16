@@ -43,7 +43,8 @@ export default async function ImpactPage() {
 
   const flagCount = neighborhoods.reduce((s, n) => s + n.flag_count, 0);
   const totalLoss = neighborhoods.reduce((s, n) => s + n.estimated_annual_loss_eur, 0);
-  const maxLoss = neighborhoods[0]?.estimated_annual_loss_eur ?? 1;
+  const maxFlagCount = Math.max(...neighborhoods.map((n) => n.flag_count), 1);
+  const maxRegisteredCount = Math.max(...neighborhoods.map((n) => n.registered_count), 1);
 
   return (
     <div className="max-w-7xl mx-auto px-6 py-10 space-y-10">
@@ -79,9 +80,16 @@ export default async function ImpactPage() {
           title="Po kvartovima"
           description="Sortirano po procijenjenom gubitku."
         />
-        <div className="space-y-4">
+        <div className="divide-y divide-border/60">
           {neighborhoods.map((n, i) => (
-            <NeighborhoodBar key={n.slug} neighborhood={n} maxLoss={maxLoss} rank={i + 1} />
+            <NeighborhoodBar
+              key={n.slug}
+              neighborhood={n}
+              maxFlagCount={maxFlagCount}
+              maxRegisteredCount={maxRegisteredCount}
+              cityTotalLoss={totalLoss}
+              rank={i + 1}
+            />
           ))}
         </div>
       </div>
