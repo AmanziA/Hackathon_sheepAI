@@ -402,6 +402,13 @@ function EvidenceSheetContent({
 
   return (
     <div className="space-y-4">
+      <a
+        href={`/dashboard/${flag.id}`}
+        className="inline-flex items-center gap-1 text-xs text-primary hover:underline"
+      >
+        Otvori punu stranicu <ArrowSquareOut size={11} />
+      </a>
+
       {/* Status banner */}
       {resolution ? (
         <div className="rounded-xl bg-muted px-4 py-3 flex items-center gap-2.5">
@@ -509,9 +516,6 @@ function EvidenceSheetContent({
         </div>
       )}
 
-      <a href={`/dashboard/${flag.id}`} className="block text-xs text-muted-foreground hover:underline pt-1">
-        Otvori punu stranicu →
-      </a>
     </div>
   );
 }

@@ -1,8 +1,10 @@
+import { cookies } from "next/headers";
 import { StatNumber } from "@/components/domain/stat-number";
 import { NeighborhoodBar } from "@/components/domain/neighborhood-bar";
+import { createClient } from "@/utils/supabase/server";
 import type { Neighborhood } from "@/lib/types";
 
-export const revalidate = 300;
+export const dynamic = "force-dynamic";
 
 const MOCK_NEIGHBORHOODS: Neighborhood[] = [
   { slug: "veli-varos",  name: "Veli Varoš",  city: "Split", geojson: null, flag_count: 38, registered_count: 12, estimated_annual_loss_eur: 312400 },
@@ -20,7 +22,22 @@ const MOCK_NEIGHBORHOODS: Neighborhood[] = [
 ];
 
 export default async function ImpactPage() {
-  const neighborhoods: Neighborhood[] = MOCK_NEIGHBORHOODS;
+  const cookieStore = await cookies();
+  const supabase = createClient(cookieStore);
+
+  const { data } = await supabase
+    .from("neighborhoods")
+    .select("slug, name, city, geojson, flag_count, registered_count, estimated_annual_loss_eur")
+    .order("estimated_annual_loss_eur", { ascending: false })
+    .limit(50);
+
+  const hasReal =
+    data && data.length > 0 && data.some((n) => (n.estimated_annual_loss_eur ?? 0) > 0);
+  const neighborhoods: Neighborhood[] = hasReal
+    ? (data as Neighborhood[])
+    : MOCK_NEIGHBORHOODS;
+  const usingMock = !hasReal;
+
   const flagCount = neighborhoods.reduce((s, n) => s + n.flag_count, 0);
   const totalLoss = neighborhoods.reduce((s, n) => s + n.estimated_annual_loss_eur, 0);
   const maxLoss = neighborhoods[0]?.estimated_annual_loss_eur ?? 1;
@@ -31,6 +48,7 @@ export default async function ImpactPage() {
         <h1 className="text-3xl font-bold tracking-tight">Statistika — Split</h1>
         <p className="text-muted-foreground text-sm">
           Procijenjeni godišnji fiskalni gubitak od neregistriranih iznajmljivača.
+          {usingMock ? " · indikativni mock podaci dok se baza ne popuni" : ""}
         </p>
       </div>
 

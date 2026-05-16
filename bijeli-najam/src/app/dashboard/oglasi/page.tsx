@@ -1,4 +1,8 @@
+import { cookies } from "next/headers";
+import { createClient } from "@/utils/supabase/server";
 import { OglasiClient } from "./oglasi-client";
+
+export const dynamic = "force-dynamic";
 
 const MOCK_CANDIDATES = [
   { id: "c1",  platform: "airbnb",  title: "Luksuzni apartman — Veli Varoš, Split", host_name: "Marko",                    neighborhood: "Veli Varoš", price_per_night: 145, beds: 4, guests: 8,  scraped_at: "2026-05-14", url: "https://airbnb.com/rooms/001" },
@@ -23,6 +27,45 @@ const MOCK_CANDIDATES = [
   { id: "c20", platform: "airbnb",  title: "Old Town Dioklecijan Studio",           host_name: "Helena",                   neighborhood: "Grad",      price_per_night: 220, beds: 2, guests: 4,  scraped_at: "2026-05-14", url: "https://airbnb.com/rooms/020" },
 ];
 
-export default function OglasiPage() {
-  return <OglasiClient candidates={MOCK_CANDIDATES} />;
+type CandidateRow = {
+  id: string;
+  platform: string;
+  title: string;
+  host_name: string | null;
+  neighborhood: string | null;
+  price_per_night: number | null;
+  beds: number | null;
+  guests: number | null;
+  scraped_at: string;
+  url: string;
+};
+
+export default async function OglasiPage() {
+  const cookieStore = await cookies();
+  const supabase = createClient(cookieStore);
+
+  const { data } = await supabase
+    .from("candidate_listings")
+    .select("id, platform, title, host_name, neighborhood, price_per_night, beds, guests, scraped_at, url")
+    .order("scraped_at", { ascending: false })
+    .limit(500);
+
+  const rows: CandidateRow[] = (data as CandidateRow[] | null) ?? [];
+  const candidates =
+    rows.length > 0
+      ? rows.map((r) => ({
+          id: r.id,
+          platform: r.platform,
+          title: r.title,
+          host_name: r.host_name ?? "—",
+          neighborhood: r.neighborhood ?? "—",
+          price_per_night: r.price_per_night ?? 0,
+          beds: r.beds ?? 0,
+          guests: r.guests ?? 0,
+          scraped_at: r.scraped_at,
+          url: r.url,
+        }))
+      : MOCK_CANDIDATES;
+
+  return <OglasiClient candidates={candidates} />;
 }

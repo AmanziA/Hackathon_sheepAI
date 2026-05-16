@@ -1,13 +1,14 @@
 "use client";
 
-import { useRef } from "react";
 import { Separator } from "@/components/ui/separator";
 import { Button } from "@/components/ui/button";
-import { FilePdf, WarningCircle, CheckCircle, Eye } from "@phosphor-icons/react";
+import { FilePdf, WarningCircle, CheckCircle, Eye, Buildings } from "@phosphor-icons/react";
 import { ListingPreview } from "./listing-preview";
-import { AgentTrace } from "./agent-trace";
+import { TraceSummary } from "./trace-summary";
 import { ScoreBreakdown } from "./score-breakdown";
 import { ConfidenceBadge } from "./confidence-badge";
+import { EvisitorPanel } from "./evisitor-panel";
+import { evisitorLookupForCandidate } from "@/lib/evisitor-mock";
 import { cn } from "@/lib/utils";
 import type { Flag, AgentTrace as AgentTraceType, TraceStep, EntityLink } from "@/lib/types";
 
@@ -20,15 +21,19 @@ interface Props {
 }
 
 export function EvidenceCard({ flag, trace, steps, entityLink, className }: Props) {
-  const traceRef = useRef<HTMLDivElement>(null);
   const listing = flag.candidate_listings;
-
   const isFlag = flag.confidence_unregistered >= 0.5;
 
-  function scrollToStep(stepIndex: number) {
-    const el = traceRef.current?.querySelector(`[data-step="${stepIndex}"]`);
-    el?.scrollIntoView({ behavior: "smooth", block: "center" });
-  }
+  const evisitor = listing
+    ? evisitorLookupForCandidate(
+        {
+          id: listing.id,
+          title: listing.title,
+          neighborhood: listing.neighborhood,
+        },
+        { confidenceUnregistered: flag.confidence_unregistered }
+      )
+    : null;
 
   async function generateReport() {
     const res = await fetch(`/api/generate-report?flag_id=${flag.id}`);
@@ -44,7 +49,6 @@ export function EvidenceCard({ flag, trace, steps, entityLink, className }: Prop
 
   return (
     <div className={cn("space-y-6", className)}>
-      {/* Panel 1: Kandidatski oglas */}
       <section className="space-y-3">
         <div className="flex items-center gap-2 text-sm font-semibold text-muted-foreground uppercase tracking-wide">
           <Eye size={14} />
@@ -59,14 +63,27 @@ export function EvidenceCard({ flag, trace, steps, entityLink, className }: Prop
 
       <Separator />
 
-      {/* Panel 2: Agent reasoning trace — the centerpiece */}
-      <section className="space-y-3" ref={traceRef}>
+      <section className="space-y-3">
+        <div className="flex items-center gap-2 text-sm font-semibold text-muted-foreground uppercase tracking-wide">
+          <Buildings size={14} />
+          Provjera u eVisitor sustavu
+        </div>
+        {evisitor ? (
+          <EvisitorPanel lookup={evisitor} expectedBeds={listing?.beds} />
+        ) : (
+          <p className="text-sm text-muted-foreground">Nema podataka.</p>
+        )}
+      </section>
+
+      <Separator />
+
+      <section className="space-y-3">
         <div className="flex items-center gap-2 text-sm font-semibold text-muted-foreground uppercase tracking-wide">
           <Eye size={14} />
           Trag istrage agenta
         </div>
         {trace ? (
-          <AgentTrace trace={trace} steps={steps} onEvidenceClick={scrollToStep} />
+          <TraceSummary trace={trace} steps={steps} confidence={flag.confidence_unregistered} />
         ) : (
           <p className="text-sm text-muted-foreground">Trag istrage nije dostupan.</p>
         )}
@@ -74,7 +91,6 @@ export function EvidenceCard({ flag, trace, steps, entityLink, className }: Prop
 
       <Separator />
 
-      {/* Panel 3: Verdict + actions */}
       <section className="space-y-4">
         <div className="flex items-center gap-2 text-sm font-semibold text-muted-foreground uppercase tracking-wide">
           {isFlag ? (
