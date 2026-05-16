@@ -1,26 +1,27 @@
-import { createClient } from "@/lib/supabase/server";
-import { cookies } from "next/headers";
 import { StatNumber } from "@/components/domain/stat-number";
 import { NeighborhoodBar } from "@/components/domain/neighborhood-bar";
-import { ImpactEmptyState } from "./impact-empty-state";
 import type { Neighborhood } from "@/lib/types";
 
 export const revalidate = 300;
 
+const MOCK_NEIGHBORHOODS: Neighborhood[] = [
+  { slug: "veli-varos",  name: "Veli Varoš",  city: "Split", geojson: null, flag_count: 38, registered_count: 12, estimated_annual_loss_eur: 312400 },
+  { slug: "bacvice",     name: "Bačvice",      city: "Split", geojson: null, flag_count: 31, registered_count: 9,  estimated_annual_loss_eur: 268700 },
+  { slug: "spinut",      name: "Spinut",       city: "Split", geojson: null, flag_count: 27, registered_count: 14, estimated_annual_loss_eur: 221500 },
+  { slug: "meje",        name: "Meje",         city: "Split", geojson: null, flag_count: 22, registered_count: 8,  estimated_annual_loss_eur: 187300 },
+  { slug: "znjan",       name: "Žnjan",        city: "Split", geojson: null, flag_count: 19, registered_count: 6,  estimated_annual_loss_eur: 154600 },
+  { slug: "firule",      name: "Firule",       city: "Split", geojson: null, flag_count: 17, registered_count: 11, estimated_annual_loss_eur: 132800 },
+  { slug: "sucidar",     name: "Sućidar",      city: "Split", geojson: null, flag_count: 14, registered_count: 5,  estimated_annual_loss_eur: 108400 },
+  { slug: "grad",        name: "Grad (Stari grad)", city: "Split", geojson: null, flag_count: 12, registered_count: 31, estimated_annual_loss_eur: 94100 },
+  { slug: "trstenik",    name: "Trstenik",     city: "Split", geojson: null, flag_count: 9,  registered_count: 4,  estimated_annual_loss_eur: 71200 },
+  { slug: "lovret",      name: "Lovret",       city: "Split", geojson: null, flag_count: 7,  registered_count: 3,  estimated_annual_loss_eur: 54800 },
+  { slug: "kman",        name: "Kman",         city: "Split", geojson: null, flag_count: 5,  registered_count: 2,  estimated_annual_loss_eur: 38500 },
+  { slug: "mejaši",      name: "Mejaši",       city: "Split", geojson: null, flag_count: 4,  registered_count: 1,  estimated_annual_loss_eur: 29300 },
+];
+
 export default async function ImpactPage() {
-  const cookieStore = await cookies();
-  const supabase = createClient(cookieStore);
-
-  const [flagsRes, neighborhoodsRes] = await Promise.all([
-    supabase.from("flags").select("id", { count: "exact", head: true }),
-    supabase
-      .from("neighborhoods")
-      .select("*")
-      .order("estimated_annual_loss_eur", { ascending: false }),
-  ]);
-
-  const flagCount = flagsRes.count ?? 0;
-  const neighborhoods: Neighborhood[] = neighborhoodsRes.data ?? [];
+  const neighborhoods: Neighborhood[] = MOCK_NEIGHBORHOODS;
+  const flagCount = neighborhoods.reduce((s, n) => s + n.flag_count, 0);
   const totalLoss = neighborhoods.reduce((s, n) => s + n.estimated_annual_loss_eur, 0);
   const maxLoss = neighborhoods[0]?.estimated_annual_loss_eur ?? 1;
 
@@ -41,15 +42,11 @@ export default async function ImpactPage() {
 
       <div className="space-y-4">
         <h2 className="text-xl font-semibold tracking-tight">Po kvartovima</h2>
-        {neighborhoods.length === 0 ? (
-          <ImpactEmptyState />
-        ) : (
-          <div className="space-y-4">
-            {neighborhoods.map((n) => (
-              <NeighborhoodBar key={n.slug} neighborhood={n} maxLoss={maxLoss} />
-            ))}
-          </div>
-        )}
+        <div className="space-y-4">
+          {neighborhoods.map((n) => (
+            <NeighborhoodBar key={n.slug} neighborhood={n} maxLoss={maxLoss} />
+          ))}
+        </div>
       </div>
 
       <p className="text-xs text-muted-foreground border-t pt-4">
