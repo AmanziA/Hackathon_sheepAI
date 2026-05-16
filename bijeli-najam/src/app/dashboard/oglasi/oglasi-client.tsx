@@ -1,9 +1,6 @@
 "use client";
 
-import { useState } from "react";
-import { useRouter } from "next/navigation";
 import { Badge } from "@/components/ui/badge";
-import { Button } from "@/components/ui/button";
 import {
   Table,
   TableBody,
@@ -12,7 +9,7 @@ import {
   TableHeader,
   TableRow,
 } from "@/components/ui/table";
-import { ArrowSquareOut, ArrowsClockwise } from "@phosphor-icons/react";
+import { ArrowSquareOut } from "@phosphor-icons/react";
 import { cn } from "@/lib/utils";
 
 interface Candidate {
@@ -33,52 +30,26 @@ interface Props {
 }
 
 export function OglasiClient({ candidates }: Props) {
-  const router = useRouter();
-  const [loading, setLoading] = useState(false);
-
   const airbnbCount = candidates.filter((c) => c.platform === "airbnb").length;
   const bookingCount = candidates.filter((c) => c.platform === "booking").length;
 
-  function handlePokreni() {
-    setLoading(true);
-    setTimeout(() => {
-      router.push("/dashboard");
-    }, 2500);
-  }
-
   return (
-    <div className="p-6 space-y-6">
-      <div className="flex items-start justify-between gap-4">
-        <div className="space-y-2">
-          <h1 className="text-2xl font-semibold tracking-tight">Online oglasi</h1>
-          <div className="flex items-center gap-2 flex-wrap">
-            <Badge variant="secondary" className="text-sm px-3 py-1">
-              {candidates.length} oglasa
-            </Badge>
-            <Badge variant="outline" className="border-blue-300 text-blue-700 bg-blue-50 text-xs">
-              Airbnb {airbnbCount}
-            </Badge>
-            <Badge variant="outline" className="border-orange-300 text-orange-700 bg-orange-50 text-xs">
-              Booking {bookingCount}
-            </Badge>
-          </div>
+    <div className="p-6 space-y-5">
+      {/* Header */}
+      <div className="flex items-center gap-3">
+        <h1 className="text-2xl font-semibold tracking-tight">Online oglasi</h1>
+        <div className="flex items-center gap-2 ml-2">
+          <Badge variant="secondary">{candidates.length}</Badge>
+          <Badge variant="outline" className="border-blue-300 text-blue-700 bg-blue-50 text-xs">
+            Airbnb {airbnbCount}
+          </Badge>
+          <Badge variant="outline" className="border-orange-300 text-orange-700 bg-orange-50 text-xs">
+            Booking {bookingCount}
+          </Badge>
         </div>
-
-        <Button
-          onClick={handlePokreni}
-          disabled={loading}
-          className="shrink-0"
-        >
-          {loading ? (
-            <>
-              <ArrowsClockwise size={16} className="mr-2 animate-spin" />
-              Analiziranje...
-            </>
-          ) : (
-            "Pokreni uspoređivanje"
-          )}
-        </Button>
       </div>
+
+
 
       <div className="rounded-md border">
         <Table>

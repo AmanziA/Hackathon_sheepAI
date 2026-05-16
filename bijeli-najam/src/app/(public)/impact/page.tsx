@@ -28,7 +28,7 @@ export default async function ImpactPage() {
   return (
     <div className="max-w-7xl mx-auto px-6 py-10 space-y-10">
       <div className="space-y-1">
-        <h1 className="text-3xl font-bold tracking-tight">Učinak na grad Split</h1>
+        <h1 className="text-3xl font-bold tracking-tight">Statistika — Split</h1>
         <p className="text-muted-foreground text-sm">
           Procijenjeni godišnji fiskalni gubitak od neregistriranih iznajmljivača.
         </p>

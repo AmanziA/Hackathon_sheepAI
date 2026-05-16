@@ -1,4 +1,5 @@
 import { Badge } from "@/components/ui/badge";
+import { RefreshButton } from "./refresh-button";
 import {
   Table,
   TableBody,
@@ -99,9 +100,12 @@ export default async function RegistriranePage() {
             </p>
           ) : null}
         </div>
-        <Badge variant="secondary" className="text-sm px-3 py-1">
-          {rows.length} objekata
-        </Badge>
+        <div className="flex items-center gap-3">
+          <Badge variant="secondary" className="text-sm px-3 py-1">
+            {rows.length} objekata
+          </Badge>
+          <RefreshButton count={rows.length} />
+        </div>
       </div>
 
       <div className="rounded-md border">
