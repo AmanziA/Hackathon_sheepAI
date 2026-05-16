@@ -90,43 +90,33 @@ const columns: Column<RegisteredUnit>[] = [
           />
           <span className="font-medium text-sm truncate">{u.name ?? "—"}</span>
         </div>
-        <div className="text-xs text-muted-foreground flex items-center gap-1.5 mt-0.5 flex-wrap">
+        <div className="text-xs text-muted-foreground flex items-center gap-x-2 gap-y-0.5 mt-0.5 flex-wrap">
           {u.owner ? <span className="truncate">{u.owner}</span> : null}
-          {u.owner && (u.neighborhood || formatAddress(u) !== "—") ? (
-            <span aria-hidden>·</span>
+          {u.neighborhood ? (
+            <>
+              <span aria-hidden>·</span>
+              <span>{u.neighborhood}</span>
+            </>
           ) : null}
-          {u.neighborhood ? <span>{u.neighborhood}</span> : null}
-          {u.neighborhood && formatAddress(u) !== "—" ? <span aria-hidden>·</span> : null}
-          <span className="truncate">{formatAddress(u)}</span>
-        </div>
-      </div>
-    ),
-  },
-  {
-    key: "detalji",
-    label: "K / Z",
-    accessor: (u) => u.beds ?? 0,
-    sortable: true,
-    filterable: false,
-    align: "right",
-    cellClassName: "py-2 text-right whitespace-nowrap",
-    render: (u) => (
-      <div className="text-right">
-        <div className="text-sm tabular-nums flex items-center justify-end gap-2">
-          <span className="inline-flex items-center gap-1 text-muted-foreground">
-            <Bed size={12} />
+          {formatAddress(u) !== "—" ? (
+            <>
+              <span aria-hidden>·</span>
+              <span className="truncate">{formatAddress(u)}</span>
+            </>
+          ) : null}
+          <span aria-hidden>·</span>
+          <span className="inline-flex items-center gap-1 tabular-nums">
+            <Bed size={11} />
             {u.beds ?? "—"}
           </span>
-          <span className="inline-flex items-center gap-1 text-muted-foreground">
-            <Star size={12} weight="fill" className="text-warning" />
-            {u.stars ?? "—"}
-          </span>
+          {u.stars != null ? (
+            <span className="inline-flex items-center gap-1 tabular-nums">
+              <Star size={11} weight="fill" className="text-warning" />
+              {u.stars}
+            </span>
+          ) : null}
+          {u.category ? <span className="truncate">{u.category}</span> : null}
         </div>
-        {u.category ? (
-          <div className="text-xs text-muted-foreground mt-0.5 truncate">
-            {u.category}
-          </div>
-        ) : null}
       </div>
     ),
   },

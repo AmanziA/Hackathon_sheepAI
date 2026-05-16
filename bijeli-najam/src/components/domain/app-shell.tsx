@@ -15,9 +15,11 @@ import {
   type IconWeight,
 } from "@phosphor-icons/react";
 import { LogoMark } from "@/components/domain/logo-mark";
-import { useState } from "react";
+import { useMemo, useState } from "react";
 import { cn } from "@/lib/utils";
 import { MOCK_FLAGS } from "@/lib/mock-data";
+import { DEMO_MONITORING_ALERTS } from "@/lib/monitoring-demo";
+import { useResolved } from "@/lib/resolved-store";
 import { InvestigationOverlay } from "@/components/domain/investigation-overlay";
 import { CommandPalette } from "@/components/domain/command-palette";
 
@@ -25,12 +27,18 @@ interface Props {
   children: React.ReactNode;
 }
 
-const AUTO_COUNT = MOCK_FLAGS.filter((f) => f.confidence_unregistered >= 0.9).length;
 const TOTAL_CANDIDATES = MOCK_FLAGS.length;
+const TOTAL_TODO = MOCK_FLAGS.length + DEMO_MONITORING_ALERTS.length;
 
 export function AppShell({ children }: Props) {
   const pathname = usePathname();
   const [running, setRunning] = useState(false);
+  const { items: resolvedItems } = useResolved();
+
+  const todoCount = useMemo(() => {
+    const resolvedIds = new Set(Object.keys(resolvedItems));
+    return TOTAL_TODO - resolvedIds.size;
+  }, [resolvedItems]);
 
   function isActive(href: string, exact = false) {
     if (exact) return pathname === href;
@@ -85,9 +93,16 @@ export function AppShell({ children }: Props) {
               className="transition-transform duration-200"
             />
             <span className="flex-1">Za provjeru</span>
-            {!dashActive && AUTO_COUNT > 0 && (
-              <span className="bg-destructive text-destructive-foreground text-[10px] font-bold leading-none rounded-full px-1.5 py-0.5 transition-transform duration-200 group-hover:scale-110">
-                {AUTO_COUNT}
+            {todoCount > 0 && (
+              <span
+                className={cn(
+                  "text-[10px] font-semibold tabular-nums leading-none rounded-full px-1.5 py-0.5 transition-transform duration-200",
+                  dashActive
+                    ? "bg-foreground/15 text-foreground"
+                    : "bg-destructive/15 text-destructive group-hover:scale-110"
+                )}
+              >
+                {todoCount}
               </span>
             )}
           </Link>

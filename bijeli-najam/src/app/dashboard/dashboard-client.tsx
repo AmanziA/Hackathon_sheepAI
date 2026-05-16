@@ -242,9 +242,6 @@ function FlagRow({
           )}
         </div>
       </div>
-      <span className="text-[10px] uppercase tracking-widest text-muted-foreground/70 shrink-0">
-        {variant === "auto" ? "Automatski" : "Na provjeri"}
-      </span>
     </div>
   );
 }
@@ -298,9 +295,6 @@ function MonitoringRow({
           </span>
         </div>
       </div>
-      <span className="text-[10px] uppercase tracking-widest text-muted-foreground/70 shrink-0">
-        Praćenje
-      </span>
     </div>
   );
 }

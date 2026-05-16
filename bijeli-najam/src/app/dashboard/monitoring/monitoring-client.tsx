@@ -108,27 +108,20 @@ const columns: Column<MonitoringRow>[] = [
     render: (r) => r.vodovod_m3_per_month.toFixed(1),
   },
   {
-    key: "online",
-    label: "Online noćenja",
+    key: "nights",
+    label: "Noćenja (online → prijavljeno)",
     accessor: (r) => r.online_nights_ytd,
     sortable: true,
-    filterable: true,
+    filterable: false,
     align: "right",
-    cellClassName: "text-sm tabular-nums",
+    cellClassName: "text-sm tabular-nums whitespace-nowrap",
     render: (r) => (
       <span className={cn("tabular-nums", nightsDeltaClass(r.online_nights_ytd, r.reported_nights_ytd))}>
         {r.online_nights_ytd}
+        <span className="mx-1 text-muted-foreground">→</span>
+        {r.reported_nights_ytd}
       </span>
     ),
-  },
-  {
-    key: "reported",
-    label: "Noćenja YTD",
-    accessor: (r) => r.reported_nights_ytd,
-    sortable: true,
-    filterable: true,
-    align: "right",
-    cellClassName: "text-sm tabular-nums",
   },
   {
     key: "last",

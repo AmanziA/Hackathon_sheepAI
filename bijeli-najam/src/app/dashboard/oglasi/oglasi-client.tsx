@@ -186,20 +186,19 @@ export function OglasiClient({ candidates, usingMock, error }: Props) {
         </div>
       </div>
 
-      <div className="rounded-md border">
+      <div className="rounded-lg border">
         <Table>
           <TableHeader>
             <TableRow>
               <TableHead>Oglas</TableHead>
-              <TableHead className="text-right whitespace-nowrap">Cijena · K/G</TableHead>
               <TableHead>Status</TableHead>
-              <TableHead className="text-right w-[120px]">Akcija</TableHead>
+              <TableHead className="text-right w-[100px]">Akcija</TableHead>
             </TableRow>
           </TableHeader>
           <TableBody>
             {filtered.length === 0 ? (
               <TableRow>
-                <TableCell colSpan={4} className="text-center text-sm text-muted-foreground py-8">
+                <TableCell colSpan={3} className="text-center text-sm text-muted-foreground py-8">
                   Nema oglasa za odabrane filtere.
                 </TableCell>
               </TableRow>
@@ -237,14 +236,6 @@ export function OglasiClient({ candidates, usingMock, error }: Props) {
                           <span className="truncate">{c.address}</span>
                         </>
                       ) : null}
-                    </div>
-                  </TableCell>
-                  <TableCell className="py-2 text-right whitespace-nowrap">
-                    <div className="text-sm font-medium tabular-nums">
-                      {c.price_per_night ? `${c.price_per_night} €` : "—"}
-                    </div>
-                    <div className="text-xs text-muted-foreground tabular-nums">
-                      {(c.beds || "—") + " / " + (c.guests || "—")}
                     </div>
                   </TableCell>
                   <TableCell className="py-2">
