@@ -1,7 +1,6 @@
 "use client";
 
 import { ReactNode, useMemo, useState } from "react";
-import { Popover } from "@base-ui/react/popover";
 import {
   Table,
   TableBody,
@@ -15,9 +14,7 @@ import {
   CaretDown,
   CaretUp,
   CaretUpDown,
-  FunnelSimple,
   MagnifyingGlass,
-  X,
 } from "@phosphor-icons/react";
 import { cn } from "@/lib/utils";
 
@@ -43,6 +40,8 @@ interface Props<T> {
   searchPlaceholder?: string;
   empty?: ReactNode;
   className?: string;
+  /** Extra controls rendered inline with the search input (e.g. a filter dropdown). */
+  toolbar?: ReactNode;
 }
 
 type SortState = { key: string; dir: "asc" | "desc" } | null;
@@ -75,33 +74,22 @@ export function DataTable<T>({
   searchPlaceholder = "Pretraži…",
   empty,
   className,
+  toolbar,
 }: Props<T>) {
   const [search, setSearch] = useState("");
-  const [colFilters, setColFilters] = useState<Record<string, string>>({});
   const [sort, setSort] = useState<SortState>(null);
 
   const filtered = useMemo(() => {
     const q = search.trim().toLowerCase();
 
     const result = rows.filter((row) => {
-      if (q) {
-        const haystack = columns
-          .map((c) => c.accessor(row))
-          .filter((v) => v != null)
-          .map((v) => String(v).toLowerCase())
-          .join("   ");
-        if (!haystack.includes(q)) return false;
-      }
-
-      for (const col of columns) {
-        const f = colFilters[col.key];
-        if (!f) continue;
-        const v = col.accessor(row);
-        if (v == null) return false;
-        if (!String(v).toLowerCase().includes(f.toLowerCase())) return false;
-      }
-
-      return true;
+      if (!q) return true;
+      const haystack = columns
+        .map((c) => c.accessor(row))
+        .filter((v) => v != null)
+        .map((v) => String(v).toLowerCase())
+        .join("   ");
+      return haystack.includes(q);
     });
 
     if (sort) {
@@ -113,7 +101,7 @@ export function DataTable<T>({
     }
 
     return result;
-  }, [rows, columns, search, colFilters, sort]);
+  }, [rows, columns, search, sort]);
 
   function toggleSort(key: string) {
     setSort((prev) => {
@@ -123,20 +111,9 @@ export function DataTable<T>({
     });
   }
 
-  function setFilter(key: string, value: string) {
-    setColFilters((prev) => {
-      if (!value) {
-        const { [key]: _unused, ...rest } = prev;
-        void _unused;
-        return rest;
-      }
-      return { ...prev, [key]: value };
-    });
-  }
-
   return (
     <div className={cn("space-y-3", className)}>
-      <div className="flex items-center gap-2">
+      <div className="flex items-center gap-2 flex-wrap">
         <div className="relative max-w-sm w-full">
           <MagnifyingGlass
             size={14}
@@ -149,6 +126,7 @@ export function DataTable<T>({
             className="h-8 pl-8 text-sm"
           />
         </div>
+        {toolbar}
         <span className="ml-auto text-xs text-muted-foreground tabular-nums">
           {filtered.length} / {rows.length}
         </span>
@@ -167,8 +145,6 @@ export function DataTable<T>({
                     : sort?.dir === "asc"
                       ? CaretUp
                       : CaretDown;
-                const filterValue = colFilters[col.key] ?? "";
-                const filterActive = filterValue.length > 0;
                 return (
                   <TableHead
                     key={col.key}
@@ -200,14 +176,6 @@ export function DataTable<T>({
                       ) : (
                         col.label
                       )}
-                      {col.filterable ? (
-                        <ColumnFilterPopover
-                          columnLabel={typeof col.label === "string" ? col.label : col.key}
-                          value={filterValue}
-                          onChange={(v) => setFilter(col.key, v)}
-                          active={filterActive}
-                        />
-                      ) : null}
                     </span>
                   </TableHead>
                 );
@@ -261,60 +229,3 @@ export function DataTable<T>({
   );
 }
 
-function ColumnFilterPopover({
-  columnLabel,
-  value,
-  onChange,
-  active,
-}: {
-  columnLabel: string;
-  value: string;
-  onChange: (v: string) => void;
-  active: boolean;
-}) {
-  return (
-    <Popover.Root>
-      <Popover.Trigger
-        type="button"
-        aria-label={`Filtriraj ${columnLabel}`}
-        className={cn(
-          "inline-flex items-center justify-center h-5 w-5 rounded hover:bg-muted transition-colors",
-          active ? "text-primary" : "text-muted-foreground/60 hover:text-foreground"
-        )}
-      >
-        <FunnelSimple size={12} weight={active ? "fill" : "regular"} />
-      </Popover.Trigger>
-      <Popover.Portal>
-        <Popover.Positioner sideOffset={6} align="start">
-          <Popover.Popup
-            className={cn(
-              "bg-popover text-popover-foreground rounded-md border shadow-md p-2 w-56",
-              "data-[starting-style]:opacity-0 data-[ending-style]:opacity-0",
-              "transition-opacity duration-150 z-50"
-            )}
-          >
-            <div className="flex items-center gap-1.5">
-              <Input
-                value={value}
-                onChange={(e) => onChange(e.target.value)}
-                placeholder={`Filter ${columnLabel.toLowerCase()}…`}
-                autoFocus
-                className="h-8 text-sm"
-              />
-              {value ? (
-                <button
-                  type="button"
-                  onClick={() => onChange("")}
-                  aria-label="Očisti filter"
-                  className="shrink-0 inline-flex items-center justify-center h-8 w-8 rounded hover:bg-muted text-muted-foreground hover:text-foreground"
-                >
-                  <X size={12} />
-                </button>
-              ) : null}
-            </div>
-          </Popover.Popup>
-        </Popover.Positioner>
-      </Popover.Portal>
-    </Popover.Root>
-  );
-}

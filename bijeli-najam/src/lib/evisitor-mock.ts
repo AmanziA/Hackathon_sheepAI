@@ -236,6 +236,51 @@ export function monitoringStatusFor(unit: {
   };
 }
 
+/**
+ * Estimate the nights this unit was actually rented YTD based on what we found
+ * online (Booking/Airbnb activity, calendar gaps, utility consumption). The
+ * meaningful number is the *gap* against reported_nights_ytd from eVisitor —
+ * a big online > reported gap means unreported turnover.
+ *
+ * Derived deterministically from the monitoring status. In a real pipeline this
+ * would aggregate calendar/availability data from each entity_link's
+ * candidate_listings.
+ */
+export function onlineNightsFor(unit: {
+  id: string;
+  name?: string | null;
+  beds?: number | null;
+  category?: string | null;
+}): number {
+  const status = monitoringStatusFor(unit);
+  const record = evisitorFor(unit);
+  const reported = record.reported_nights_ytd;
+  const seed = unit.id;
+
+  switch (status.kind) {
+    case "occupied_silent": {
+      // Lots of online activity, little / no reporting. 3-5× the (small)
+      // reported number, or a healthy 120-200 nights if reported is 0.
+      const base = reported > 0 ? reported : pickInRange(seed, "online-base", 110, 200);
+      const multiplier = 2.5 + (hash(seed + "mult") % 100) / 40; // 2.5-5.0
+      return Math.round(base * multiplier);
+    }
+    case "occupied_reporting": {
+      // Online activity is consistent with reports. Within ±15%.
+      const delta = (hash(seed + "delta") % 30) - 15; // -15..+14
+      return Math.max(0, Math.round(reported * (1 + delta / 100)));
+    }
+    case "empty_reporting": {
+      // eVisitor claims a lot, online presence is thin → possible false reports.
+      // Online nights tiny (0-20).
+      return pickInRange(seed, "thin-online", 0, 20);
+    }
+    case "empty_silent":
+    default:
+      return 0;
+  }
+}
+
 export function evisitorLookupForCandidate(
   candidate: { id: string; title?: string | null; neighborhood?: string | null },
   options: { confidenceUnregistered?: number } = {}

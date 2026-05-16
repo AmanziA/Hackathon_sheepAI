@@ -16,6 +16,7 @@ export type MonitoringRow = {
   hep_kwh_per_day: number;
   vodovod_m3_per_month: number;
   reported_nights_ytd: number;
+  online_nights_ytd: number;
   last_check_in_at: string | null;
 };
 
@@ -52,6 +53,15 @@ function formatDate(iso: string | null): string {
   return new Date(iso).toLocaleDateString("hr-HR", { day: "numeric", month: "short" });
 }
 
+function nightsDeltaClass(online: number, reported: number): string {
+  if (reported === 0 && online === 0) return "text-muted-foreground";
+  // Online noticeably exceeds reported → unreported turnover. Red.
+  if (online >= reported * 1.5 && online - reported >= 20) return "text-destructive font-medium";
+  // Reported noticeably exceeds online → possible false reports. Red.
+  if (reported >= online * 1.5 && reported - online >= 20) return "text-destructive font-medium";
+  return "text-foreground";
+}
+
 const columns: Column<MonitoringRow>[] = [
   {
     key: "name",
@@ -61,14 +71,6 @@ const columns: Column<MonitoringRow>[] = [
     filterable: true,
     width: "w-[260px]",
     cellClassName: "font-medium text-sm",
-  },
-  {
-    key: "neighborhood",
-    label: "Kvart",
-    accessor: (r) => r.neighborhood,
-    sortable: true,
-    filterable: true,
-    cellClassName: "text-sm",
   },
   {
     key: "status",
@@ -106,6 +108,20 @@ const columns: Column<MonitoringRow>[] = [
     render: (r) => r.vodovod_m3_per_month.toFixed(1),
   },
   {
+    key: "online",
+    label: "Online noćenja",
+    accessor: (r) => r.online_nights_ytd,
+    sortable: true,
+    filterable: true,
+    align: "right",
+    cellClassName: "text-sm tabular-nums",
+    render: (r) => (
+      <span className={cn("tabular-nums", nightsDeltaClass(r.online_nights_ytd, r.reported_nights_ytd))}>
+        {r.online_nights_ytd}
+      </span>
+    ),
+  },
+  {
     key: "reported",
     label: "Noćenja YTD",
     accessor: (r) => r.reported_nights_ytd,
@@ -126,57 +142,55 @@ const columns: Column<MonitoringRow>[] = [
   },
 ];
 
+const FILTER_OPTIONS: { key: FilterKey; label: string }[] = [
+  { key: "sve", label: "Svi statusi" },
+  { key: "occupied_silent", label: "Aktivan, ne prijavljuje" },
+  { key: "empty_reporting", label: "Prijavljuje, prazan" },
+  { key: "occupied_reporting", label: "Aktivan i prijavljuje" },
+  { key: "empty_silent", label: "Prazan" },
+];
+
 export function MonitoringClient({ rows }: { rows: MonitoringRow[] }) {
   const router = useRouter();
   const [activeFilter, setActiveFilter] = useState<FilterKey>("sve");
 
-  const tabs: { key: FilterKey; label: string }[] = [
-    { key: "sve", label: "Sve" },
-    { key: "occupied_silent", label: "Aktivan, ne prijavljuje" },
-    { key: "empty_reporting", label: "Prijavljuje, prazan" },
-    { key: "occupied_reporting", label: "Aktivan i prijavljuje" },
-    { key: "empty_silent", label: "Prazan" },
-  ];
+  const counts: Record<FilterKey, number> = {
+    sve: rows.length,
+    occupied_silent: rows.filter((r) => r.status === "occupied_silent").length,
+    occupied_reporting: rows.filter((r) => r.status === "occupied_reporting").length,
+    empty_silent: rows.filter((r) => r.status === "empty_silent").length,
+    empty_reporting: rows.filter((r) => r.status === "empty_reporting").length,
+  };
 
   const filtered = activeFilter === "sve" ? rows : rows.filter((r) => r.status === activeFilter);
 
-  return (
-    <div className="space-y-4">
-      <div className="flex items-center gap-1 bg-muted rounded-lg p-1 w-fit">
-        {tabs.map(({ key, label }) => {
-          const count = key === "sve" ? rows.length : rows.filter((r) => r.status === key).length;
-          return (
-            <button
-              key={key}
-              onClick={() => setActiveFilter(key)}
-              className={cn(
-                "flex items-center gap-1.5 px-3 py-1.5 rounded-md text-xs font-medium transition-colors",
-                activeFilter === key
-                  ? "bg-background text-foreground shadow-sm"
-                  : "text-muted-foreground hover:text-foreground"
-              )}
-            >
-              {label}
-              <span className={cn(
-                "rounded-full px-1.5 py-0.5 text-[10px] font-semibold leading-none",
-                activeFilter === key
-                  ? "bg-muted text-muted-foreground"
-                  : "bg-muted-foreground/15 text-muted-foreground"
-              )}>
-                {count}
-              </span>
-            </button>
-          );
-        })}
-      </div>
+  const filterDropdown = (
+    <select
+      value={activeFilter}
+      onChange={(e) => setActiveFilter(e.target.value as FilterKey)}
+      className={cn(
+        "h-8 rounded-sm border border-input bg-background px-2 text-sm",
+        "focus-visible:outline-none focus-visible:ring-1 focus-visible:ring-ring",
+        activeFilter !== "sve" && "border-foreground/30 text-foreground"
+      )}
+      aria-label="Filtriraj po statusu"
+    >
+      {FILTER_OPTIONS.map(({ key, label }) => (
+        <option key={key} value={key}>
+          {label} ({counts[key]})
+        </option>
+      ))}
+    </select>
+  );
 
-      <DataTable
-        rows={filtered}
-        columns={columns}
-        rowKey={(r) => r.id}
-        onRowClick={(r) => router.push(`/dashboard/registrirani/${r.id}`)}
-        searchPlaceholder="Pretraži po objektu, vlasniku, kvartu…"
-      />
-    </div>
+  return (
+    <DataTable
+      rows={filtered}
+      columns={columns}
+      rowKey={(r) => r.id}
+      onRowClick={(r) => router.push(`/dashboard/registrirani/${r.id}`)}
+      searchPlaceholder="Pretraži po objektu ili statusu…"
+      toolbar={filterDropdown}
+    />
   );
 }

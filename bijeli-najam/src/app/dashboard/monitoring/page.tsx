@@ -5,6 +5,7 @@ import {
   hepFor,
   vodovodFor,
   monitoringStatusFor,
+  onlineNightsFor,
 } from "@/lib/evisitor-mock";
 import { MonitoringClient, type MonitoringRow } from "./monitoring-client";
 
@@ -47,6 +48,12 @@ function toRow(u: RegisteredUnitRow): MonitoringRow {
     beds: u.beds,
     category: u.category,
   });
+  const online_nights_ytd = onlineNightsFor({
+    id: u.id,
+    name: u.name,
+    beds: u.beds,
+    category: u.category,
+  });
   return {
     id: u.id,
     name: u.name ?? "—",
@@ -57,6 +64,7 @@ function toRow(u: RegisteredUnitRow): MonitoringRow {
     hep_kwh_per_day: hep.avg_per_period,
     vodovod_m3_per_month: vodovod.avg_per_period,
     reported_nights_ytd: record.reported_nights_ytd,
+    online_nights_ytd,
     last_check_in_at: record.last_check_in_at,
   };
 }
