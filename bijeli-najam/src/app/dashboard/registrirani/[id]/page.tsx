@@ -17,6 +17,7 @@ import {
 } from "@phosphor-icons/react/dist/ssr";
 import { createClient } from "@/utils/supabase/server";
 import { EvisitorRecordPanel } from "@/components/domain/evisitor-panel";
+import { DiscoveryTrigger } from "@/components/domain/discovery-trigger";
 import { StaysCalendar } from "@/components/domain/stays-calendar";
 import { RecentStaysTable } from "@/components/domain/recent-stays-table";
 import {
@@ -284,6 +285,15 @@ export default async function RegistriraniDetailPage({ params }: Props) {
             </a>
           </div>
         </div>
+      </section>
+
+      <Separator />
+
+      <section className="space-y-3">
+        <h2 className="text-sm font-semibold uppercase tracking-wide text-muted-foreground">
+          AI istraga online oglasa
+        </h2>
+        <DiscoveryTrigger registeredId={unit.id} unitName={unit.name} />
       </section>
 
       <Separator />

@@ -3,7 +3,7 @@
 import { useCallback, useEffect, useRef, useState } from "react";
 import { useRouter } from "next/navigation";
 import { createClient } from "@/utils/supabase/client";
-import { AgentTrace as AgentTraceView } from "./agent-trace";
+import { TraceSummary } from "./trace-summary";
 import { Badge } from "@/components/ui/badge";
 import { Button } from "@/components/ui/button";
 import { Sheet, SheetContent, SheetHeader, SheetTitle } from "@/components/ui/sheet";
@@ -300,7 +300,7 @@ export function DiscoveryDrawer({ open, onClose, registeredId, unitName }: Props
                 )}
               </div>
 
-              <AgentTraceView trace={trace} steps={steps} />
+              <TraceSummary trace={trace} steps={steps} confidence={trace.final_confidence} />
 
               {running ? (
                 <div className="flex items-center gap-2 text-xs text-muted-foreground">

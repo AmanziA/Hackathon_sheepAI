@@ -3,7 +3,15 @@
 import { useRouter } from "next/navigation";
 import { Badge } from "@/components/ui/badge";
 import { DataTable, type Column } from "@/components/domain/data-table";
-import { CheckCircle } from "@phosphor-icons/react";
+import { CheckCircle, CircleNotch } from "@phosphor-icons/react";
+import { formatConfidence } from "@/lib/format";
+
+export type LatestTrace = {
+  final_verdict: string;
+  final_confidence: number;
+  completed_at: string;
+  match_count: number;
+};
 
 export type RegisteredUnit = {
   id: string;
@@ -17,7 +25,46 @@ export type RegisteredUnit = {
   category: string | null;
   stars: number | null;
   scraped_at: string | null;
+  latest_trace?: LatestTrace | null;
 };
+
+function aiStatusRank(u: RegisteredUnit): number {
+  const t = u.latest_trace;
+  if (!t) return 0;
+  if (t.final_verdict === "running") return 1;
+  if (t.final_verdict === "clear" || t.match_count > 0) return 4;
+  if (t.final_verdict === "no_listings_found") return 2;
+  if (t.final_verdict === "error") return -1;
+  return 3; // inconclusive
+}
+
+function AiStatusBadge({ trace }: { trace: LatestTrace | null | undefined }) {
+  if (!trace) {
+    return <Badge variant="outline" className="text-xs">Nije pretraženo</Badge>;
+  }
+  if (trace.final_verdict === "running") {
+    return (
+      <Badge variant="outline" className="text-xs gap-1">
+        <CircleNotch size={10} className="animate-spin" /> u tijeku
+      </Badge>
+    );
+  }
+  if (trace.final_verdict === "clear" || trace.match_count > 0) {
+    return (
+      <Badge variant="default" className="text-xs">
+        {trace.match_count} {trace.match_count === 1 ? "oglas" : "oglasa"} ·{" "}
+        {formatConfidence(trace.final_confidence)}
+      </Badge>
+    );
+  }
+  if (trace.final_verdict === "no_listings_found") {
+    return <Badge variant="secondary" className="text-xs">Bez oglasa</Badge>;
+  }
+  if (trace.final_verdict === "error") {
+    return <Badge variant="destructive" className="text-xs">Greška</Badge>;
+  }
+  return <Badge variant="outline" className="text-xs">Neodlučno</Badge>;
+}
 
 function formatAddress(u: RegisteredUnit) {
   if (u.address) return u.address;
@@ -97,6 +144,14 @@ const columns: Column<RegisteredUnit>[] = [
     align: "center",
     cellClassName: "text-sm",
     render: (u) => (u.stars != null ? u.stars : "—"),
+  },
+  {
+    key: "ai_status",
+    label: "AI status",
+    accessor: (u) => aiStatusRank(u),
+    sortable: true,
+    filterable: false,
+    render: (u) => <AiStatusBadge trace={u.latest_trace ?? null} />,
   },
 ];
 
