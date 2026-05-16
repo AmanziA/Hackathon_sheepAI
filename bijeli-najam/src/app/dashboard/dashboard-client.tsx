@@ -183,7 +183,7 @@ export function DashboardClient({ flags, monitoringAlerts = [] }: Props) {
 
         <div className="flex items-center gap-3">
         {/* Filter tabs */}
-        <div className="flex items-center gap-1 bg-muted rounded-lg p-1">
+        <div className="flex items-center gap-1 bg-muted/40 rounded-lg p-1">
           {([
             { key: "sve",          label: "Sve",                count: allAutoFlagged.length + allNeedsReview.length + allMonitoring.length },
             { key: "auto",         label: "Automatski",         count: allAutoFlagged.length },
@@ -251,8 +251,8 @@ export function DashboardClient({ flags, monitoringAlerts = [] }: Props) {
           {showFlagSections && autoFlagged.length > 0 && (
             <section>
               <div className="px-5 pt-4 pb-2 flex items-center gap-2 sticky top-0 bg-background z-10 border-b">
-                <WarningCircle size={14} className="text-destructive" />
-                <span className="text-xs font-semibold uppercase tracking-wide text-destructive">
+                <WarningCircle size={14} className="text-muted-foreground" />
+                <span className="text-xs font-semibold uppercase tracking-wide text-muted-foreground">
                   Automatski označeni — ≥90%
                 </span>
                 <Badge className="ml-auto bg-destructive/10 text-destructive border-destructive/20 text-xs">
@@ -277,8 +277,8 @@ export function DashboardClient({ flags, monitoringAlerts = [] }: Props) {
           {showFlagSections && needsReview.length > 0 && (
             <section className={cn(autoFlagged.length > 0 && "mt-2")}>
               <div className="px-5 pt-4 pb-2 flex items-center gap-2 sticky top-0 bg-background z-10 border-b">
-                <Question size={14} className="text-amber-600" />
-                <span className="text-xs font-semibold uppercase tracking-wide text-amber-600">
+                <Question size={14} className="text-muted-foreground" />
+                <span className="text-xs font-semibold uppercase tracking-wide text-muted-foreground">
                   Na provjeri — ispod 90%
                 </span>
                 <Badge className="ml-auto bg-amber-500/10 text-amber-700 border-amber-300 text-xs">
@@ -303,8 +303,8 @@ export function DashboardClient({ flags, monitoringAlerts = [] }: Props) {
           {monitoringRows.length > 0 && (
             <section className={cn((autoFlagged.length > 0 || needsReview.length > 0) && "mt-2")}>
               <div className="px-5 pt-4 pb-2 flex items-center gap-2 sticky top-0 bg-background z-10 border-b">
-                <Lightning size={14} className="text-destructive" />
-                <span className="text-xs font-semibold uppercase tracking-wide text-destructive">
+                <Lightning size={14} className="text-muted-foreground" />
+                <span className="text-xs font-semibold uppercase tracking-wide text-muted-foreground">
                   Sumnjivi registrirani — HEP/Vodovod ↔ eVisitor
                 </span>
                 <Badge className="ml-auto bg-destructive/10 text-destructive border-destructive/20 text-xs">

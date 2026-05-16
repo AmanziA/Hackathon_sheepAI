@@ -55,10 +55,10 @@ export function AppShell({ children }: Props) {
             onClick={() => setRunning(true)}
             disabled={running}
             className={cn(
-              "group w-full flex items-center gap-3 px-4 py-3 rounded-sm text-sm font-medium transition-all duration-200 ease-out",
+              "group w-full flex items-center gap-3 px-4 py-3 rounded-sm text-sm font-semibold transition-colors duration-150 ease-out",
               running
                 ? "bg-muted text-muted-foreground cursor-not-allowed"
-                : "bg-[var(--brand-blue-100)] hover:bg-[var(--brand-blue-300)] text-[var(--brand-blue-900)] shadow-sm hover:shadow-md hover:-translate-y-px active:translate-y-0"
+                : "bg-[var(--brand-blue-500)] hover:bg-[color-mix(in_oklch,var(--brand-blue-500)_92%,black)] text-white"
             )}
           >
             <Intersect

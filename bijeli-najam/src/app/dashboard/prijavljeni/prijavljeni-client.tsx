@@ -69,7 +69,7 @@ export function PrijavljeniClient() {
       </div>
 
       <div className="flex items-center gap-2 flex-wrap">
-        <div className="flex items-center gap-1 bg-muted rounded-lg p-1">
+        <div className="flex items-center gap-1 bg-muted/40 rounded-lg p-1">
           {(
             [
               { key: "all", label: "Sve", count: all.length },
