@@ -169,8 +169,9 @@ export function AddressLookup() {
 
   function runLookup(addr: string, coords?: { lat: number; lon: number }) {
     setLoading(true);
-    setResult(null);
     setSuggestOpen(false);
+    // Keep previous result visible during refetch so the Leaflet map stays
+    // mounted (unmount/remount triggers "Map container is being reused").
     setTimeout(() => {
       setResult(lookupAddress(addr, coords));
       setLoading(false);
@@ -364,7 +365,7 @@ function SnapshotCard({ result }: { result: LookupResult }) {
       </div>
       <div className="grid grid-cols-3 gap-3 text-sm">
         <div className="space-y-0.5">
-          <p className="text-xs text-muted-foreground">Sumnjivi u kvartu</p>
+          <p className="text-xs text-muted-foreground">Za provjeru</p>
           <p className="text-xl font-semibold text-destructive tabular-nums">
             {snapshot.flagged_count}
           </p>
