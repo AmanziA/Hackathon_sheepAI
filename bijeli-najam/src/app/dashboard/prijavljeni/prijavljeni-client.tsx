@@ -64,7 +64,7 @@ export function PrijavljeniClient() {
         <h1 className="text-2xl font-semibold tracking-tight">Prijavljeni predmeti</h1>
         <p className="text-sm text-muted-foreground">
           Povijesni log svih predmeta koje ste poslali inspekciji ili odbacili.
-          Klikom na &ldquo;Vrati&rdquo; predmet se vraća na popis Za provjeru.
+          Klikom na &ldquo;Poništi prijavu&rdquo; predmet se vraća na popis Za provjeru.
         </p>
       </div>
 
@@ -201,7 +201,7 @@ export function PrijavljeniClient() {
                       onClick={() => unresolve(item.id)}
                     >
                       <ClockClockwise size={12} />
-                      Vrati
+                      Poništi prijavu
                     </Button>
                   </div>
                 ))}

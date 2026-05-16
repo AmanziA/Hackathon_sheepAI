@@ -146,8 +146,16 @@ export function DashboardClient({ flags, monitoringAlerts = [] }: Props) {
 
   return (
     <div className="flex flex-col h-full">
-      {/* Top bar */}
-      <div className="flex items-center gap-3 px-4 py-2.5 border-b bg-background">
+      {/* Page header + top bar merged, no divider between them */}
+      <div className="px-6 pt-6 pb-4 border-b space-y-6 bg-background">
+        <div className="space-y-1">
+          <h1 className="text-2xl font-semibold tracking-tight">Za provjeru</h1>
+          <p className="text-sm text-muted-foreground">
+            Oglasi koji nisu pronađeni u HTZ registru. Automatski označeni imaju pouzdanost ≥90%.
+          </p>
+        </div>
+
+        <div className="flex items-center gap-3">
         {/* Filter tabs */}
         <div className="flex items-center gap-1 bg-muted rounded-lg p-1">
           {([
@@ -198,6 +206,7 @@ export function DashboardClient({ flags, monitoringAlerts = [] }: Props) {
           <CheckCircle size={12} />
           {reportedCount} prijavljeno →
         </a>
+        </div>
       </div>
 
       <div className="flex flex-1 overflow-hidden">
@@ -400,7 +409,7 @@ function FlagCard({
 
       {/* Right: actions */}
       <div
-        className="flex flex-col gap-1.5 shrink-0 justify-center"
+        className="flex flex-row gap-1.5 shrink-0 items-center"
         onClick={(e) => e.stopPropagation()}
       >
         {variant === "auto" ? (
@@ -413,15 +422,13 @@ function FlagCard({
               <FilePdf size={13} />
               Generiraj prijavu
             </Button>
-            <Button
-              size="sm"
-              variant="ghost"
-              className="gap-1.5 h-7 text-xs text-muted-foreground"
+            <button
+              aria-label="Odbaci"
+              className="h-7 w-7 flex items-center justify-center rounded-md text-muted-foreground hover:text-destructive hover:bg-destructive/10 transition-colors"
               onClick={() => onResolve(flag.id, "dismissed")}
             >
-              <X size={13} />
-              Odbaci
-            </Button>
+              <X size={14} />
+            </button>
           </>
         ) : (
           <>
@@ -433,15 +440,13 @@ function FlagCard({
               <Eye size={13} />
               Provjeri
             </Button>
-            <Button
-              size="sm"
-              variant="ghost"
-              className="gap-1.5 h-7 text-xs text-muted-foreground"
+            <button
+              aria-label="Odbaci"
+              className="h-7 w-7 flex items-center justify-center rounded-md text-muted-foreground hover:text-destructive hover:bg-destructive/10 transition-colors"
               onClick={() => onResolve(flag.id, "dismissed")}
             >
-              <X size={13} />
-              Odbaci
-            </Button>
+              <X size={14} />
+            </button>
           </>
         )}
       </div>
@@ -684,7 +689,7 @@ function MonitoringCard({
       </div>
 
       <div
-        className="flex flex-col gap-1.5 shrink-0 justify-center"
+        className="flex flex-row gap-1.5 shrink-0 items-center"
         onClick={(e) => e.stopPropagation()}
       >
         <Button
@@ -695,15 +700,13 @@ function MonitoringCard({
           <FilePdf size={13} />
           Prijavi inspektoru
         </Button>
-        <Button
-          size="sm"
-          variant="ghost"
-          className="gap-1.5 h-7 text-xs text-muted-foreground"
+        <button
+          aria-label="Odbaci"
+          className="h-7 w-7 flex items-center justify-center rounded-md text-muted-foreground hover:text-destructive hover:bg-destructive/10 transition-colors"
           onClick={() => onResolve(alert.id, "dismissed")}
         >
-          <X size={13} />
-          Odbaci
-        </Button>
+          <X size={14} />
+        </button>
       </div>
     </div>
   );

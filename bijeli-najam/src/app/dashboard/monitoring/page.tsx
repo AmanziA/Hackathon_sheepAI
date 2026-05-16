@@ -1,5 +1,4 @@
 import { cookies } from "next/headers";
-import { Badge } from "@/components/ui/badge";
 import { createClient } from "@/utils/supabase/server";
 import {
   evisitorFor,
@@ -89,26 +88,12 @@ export default async function MonitoringPage() {
   return (
     <div className="p-6 space-y-6">
       <div className="space-y-2">
-        <h1 className="text-2xl font-semibold tracking-tight">Monitoring zauzetosti</h1>
+        <h1 className="text-2xl font-semibold tracking-tight">Praćenje zauzetosti</h1>
         <p className="text-sm text-muted-foreground max-w-2xl">
           Križna provjera HEP/Vodovod potrošnje s prijavama u eVisitoru. Crveni status označava
           nesuglasje — registrirani objekti koji ili ne prijavljuju iako su zauzeti, ili
           prijavljuju a komunalije pokazuju prazno.
         </p>
-        <div className="flex items-center gap-2 flex-wrap pt-1">
-          <Badge variant="outline" className="text-xs border-destructive/40 text-destructive bg-destructive/5">
-            Aktivan, ne prijavljuje · {counts.occupied_silent}
-          </Badge>
-          <Badge variant="outline" className="text-xs border-destructive/40 text-destructive bg-destructive/5">
-            Prijavljuje, prazan · {counts.empty_reporting}
-          </Badge>
-          <Badge variant="outline" className="text-xs border-success/40 text-success bg-success/5">
-            Aktivan i prijavljuje · {counts.occupied_reporting}
-          </Badge>
-          <Badge variant="outline" className="text-xs border-muted-foreground/40 text-muted-foreground bg-muted/40">
-            Prazan · {counts.empty_silent}
-          </Badge>
-        </div>
       </div>
 
       <MonitoringClient rows={rows} />

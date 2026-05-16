@@ -92,7 +92,7 @@ export function AppShell({ children }: Props) {
           </Link>
           <NavItem
             href="/dashboard/monitoring"
-            label="Monitoring"
+            label="Praćenje"
             icon={Pulse}
             active={isActive("/dashboard/monitoring")}
           />
