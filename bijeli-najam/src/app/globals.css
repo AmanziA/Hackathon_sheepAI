@@ -75,6 +75,9 @@
   --success-foreground: oklch(0.985 0 0);
   --warning: oklch(0.76 0.15 70);
   --warning-foreground: oklch(0.145 0 0);
+  /* Accent stripe (drafting-paper orange) for highlights + secondary CTAs */
+  --accent-orange: oklch(0.68 0.16 45);
+  --accent-orange-foreground: oklch(0.985 0 0);
   --border: oklch(0.922 0 0);
   --input: oklch(0.922 0 0);
   --ring: oklch(0.708 0 0);

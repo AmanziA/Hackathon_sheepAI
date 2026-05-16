@@ -117,7 +117,8 @@ const columns: Column<MonitoringRow>[] = [
     accessor: (r) => r.last_check_in_at,
     sortable: true,
     filterable: true,
-    cellClassName: "text-sm text-muted-foreground",
+    align: "right",
+    cellClassName: "text-sm text-muted-foreground tabular-nums",
     render: (r) => formatDate(r.last_check_in_at),
   },
 ];

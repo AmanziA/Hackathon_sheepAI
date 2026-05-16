@@ -363,7 +363,7 @@ function FlagCard({
       className={cn(
         "group relative px-5 py-4 flex gap-4 cursor-pointer focus:outline-none transition-all duration-200 ease-out",
         "hover:bg-muted/40 hover:pl-[22px] focus:bg-muted/40",
-        variant === "auto" ? "border-l-2 border-l-destructive" : "border-l-2 border-l-amber-400"
+        variant === "auto" ? "border-l-2 border-l-destructive" : "border-l-2 border-l-[hsl(28_85%_55%)]"
       )}
     >
       {/* Left: confidence + info */}
@@ -427,8 +427,7 @@ function FlagCard({
           <>
             <Button
               size="sm"
-              variant="outline"
-              className="gap-1.5 h-7 text-xs border-amber-300 text-amber-700 hover:bg-amber-50"
+              className="gap-1.5 h-7 text-xs bg-[hsl(28_85%_55%)] text-white hover:bg-[hsl(28_85%_50%)] border-transparent"
               onClick={onOpen}
             >
               <Eye size={13} />
