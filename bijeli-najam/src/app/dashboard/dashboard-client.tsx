@@ -40,8 +40,6 @@ interface Props {
   monitoringAlerts?: MonitoringAlert[];
 }
 
-type FilterTab = "sve" | "auto" | "provjera" | "registrirani";
-
 type Item =
   | { kind: "auto"; id: string; flag: Flag }
   | { kind: "review"; id: string; flag: Flag }
@@ -58,7 +56,6 @@ const STATUS_META: Record<
 export function DashboardClient({ flags, monitoringAlerts = [] }: Props) {
   const router = useRouter();
   const [search, setSearch] = useState("");
-  const [activeTab, setActiveTab] = useState<FilterTab>("sve");
   const { items: resolvedItems } = useResolved();
   const resolved = useMemo(
     () =>
@@ -107,16 +104,8 @@ export function DashboardClient({ flags, monitoringAlerts = [] }: Props) {
       ...allMonitoring.map((m): Item => ({ kind: "monitoring", id: m.id, alert: m })),
     ];
 
-    const filtered = list.filter((it) => {
-      if (activeTab === "sve") return true;
-      if (activeTab === "auto") return it.kind === "auto";
-      if (activeTab === "provjera") return it.kind === "review";
-      if (activeTab === "registrirani") return it.kind === "monitoring";
-      return true;
-    });
-
-    // Sort: auto first (highest confidence), then review, then monitoring
-    return filtered.sort((a, b) => {
+    // Sort: high-confidence flags first, then review, then monitoring
+    return list.sort((a, b) => {
       const kindOrder = { auto: 0, review: 1, monitoring: 2 } as const;
       const k = kindOrder[a.kind] - kindOrder[b.kind];
       if (k !== 0) return k;
@@ -125,7 +114,7 @@ export function DashboardClient({ flags, monitoringAlerts = [] }: Props) {
       }
       return 0;
     });
-  }, [allAuto, allReview, allMonitoring, activeTab]);
+  }, [allAuto, allReview, allMonitoring]);
 
   const reportedCount = Object.values(resolvedItems).filter(
     (i) => i.resolution === "reported"
@@ -150,48 +139,15 @@ export function DashboardClient({ flags, monitoringAlerts = [] }: Props) {
         </div>
 
         <div className="flex items-center gap-3">
-          <div className="flex items-center gap-1 bg-muted/40 rounded-lg p-1">
-            {(
-              [
-                { key: "sve",          label: "Sve",                   count: allAuto.length + allReview.length + allMonitoring.length },
-                { key: "auto",         label: "Automatski",            count: allAuto.length },
-                { key: "provjera",     label: "Na provjeri",           count: allReview.length },
-                { key: "registrirani", label: "Sumnjivi registrirani", count: allMonitoring.length },
-              ] as { key: FilterTab; label: string; count: number }[]
-            ).map(({ key, label, count }) => (
-              <button
-                key={key}
-                onClick={() => setActiveTab(key)}
-                className={cn(
-                  "flex items-center gap-1.5 px-3 py-1.5 rounded-md text-xs font-medium transition-colors",
-                  activeTab === key
-                    ? "bg-black/10 text-foreground"
-                    : "text-muted-foreground hover:text-foreground hover:bg-black/5"
-                )}
-              >
-                {label}
-                <span
-                  className={cn(
-                    "rounded-full px-1.5 py-0.5 text-[10px] font-semibold leading-none",
-                    activeTab === key
-                      ? "bg-foreground/15 text-foreground"
-                      : "bg-muted-foreground/15 text-muted-foreground"
-                  )}
-                >
-                  {count}
-                </span>
-              </button>
-            ))}
-          </div>
-
-          <div className="w-px h-5 bg-border mx-1" />
-
           <Input
             placeholder="Pretraži po naslovu, kvartu, domaćinu…"
             value={search}
             onChange={(e) => setSearch(e.target.value)}
             className="max-w-xs h-8 text-sm"
           />
+          <span className="text-xs text-muted-foreground tabular-nums">
+            {items.length} predmeta
+          </span>
 
           <a
             href="/dashboard/prijavljeni"
