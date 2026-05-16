@@ -239,7 +239,7 @@ export function AddressLookup() {
           {suggestOpen && suggestions.length > 0 && (
             <ul
               role="listbox"
-              className="absolute z-20 left-0 right-0 top-full mt-1 bg-popover border rounded-md shadow-lg overflow-hidden text-sm"
+              className="absolute z-[1100] left-0 right-0 top-full mt-1 bg-popover border rounded-md shadow-lg overflow-hidden text-sm"
             >
               {suggestions.map((s, i) => (
                 <li
