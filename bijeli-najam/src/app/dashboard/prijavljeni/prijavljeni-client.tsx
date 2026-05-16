@@ -42,7 +42,7 @@ function groupByDay(items: ResolvedItem[]): Array<{ day: string; items: Resolved
 
 export function PrijavljeniClient() {
   const { items, unresolve, clearAll } = useResolved();
-  const [filter, setFilter] = useState<Filter>("all");
+  const [filter, setFilter] = useState<Filter>("reported");
 
   const all = useMemo(
     () =>
@@ -72,9 +72,9 @@ export function PrijavljeniClient() {
         <div className="flex items-center gap-1 bg-muted/40 rounded-lg p-1">
           {(
             [
-              { key: "all", label: "Sve", count: all.length },
               { key: "reported", label: "Prijavljeno", count: reported.length },
               { key: "dismissed", label: "Odbačeno", count: dismissed.length },
+              { key: "all", label: "Sve", count: all.length },
             ] as { key: Filter; label: string; count: number }[]
           ).map(({ key, label, count }) => (
             <button

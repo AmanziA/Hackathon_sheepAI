@@ -32,6 +32,7 @@ import {
   type UtilityReading,
 } from "@/lib/evisitor-mock";
 import { demoAlertById } from "@/lib/monitoring-demo";
+import { IssueOrderCTA } from "@/components/domain/issue-order-cta";
 import { cn } from "@/lib/utils";
 import type { RegisteredUnit } from "../registrirani-client";
 
@@ -172,6 +173,15 @@ export default async function RegistriraniDetailPage({ params }: Props) {
   return (
     <div className="max-w-5xl mx-auto px-6 py-5 space-y-4">
       <BackLink fallback="/dashboard/registrirani" label="← Natrag" />
+
+      <IssueOrderCTA
+        id={unit.id}
+        kind="monitoring"
+        title={unit.name ?? "Registrirani objekt"}
+        meta={unit.neighborhood ?? ""}
+        href={`/dashboard/registrirani/${unit.id}`}
+      />
+
 
       {/* Compact header — title + chips + address in two tight rows */}
       <header className="space-y-1.5">

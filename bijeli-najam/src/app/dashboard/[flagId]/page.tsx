@@ -2,6 +2,7 @@ import { notFound } from "next/navigation";
 import { cookies } from "next/headers";
 import { EvidenceCard } from "@/components/domain/evidence-card";
 import { BackLink } from "@/components/domain/back-link";
+import { IssueOrderCTA } from "@/components/domain/issue-order-cta";
 import { MOCK_FLAGS, MOCK_TRACE_STEPS, MOCK_ENTITY_LINKS } from "@/lib/mock-data";
 import { createClient } from "@/utils/supabase/server";
 import type { Flag, TraceStep, EntityLink } from "@/lib/types";
@@ -69,9 +70,17 @@ export default async function FlagDetailPage({ params }: Props) {
         label="← Natrag na popis"
         className="text-sm text-muted-foreground hover:underline mb-6 inline-block"
       />
-      <h1 className="text-2xl font-bold tracking-tight mb-8">
+      <h1 className="text-2xl font-bold tracking-tight mb-6">
         {flag.candidate_listings?.title ?? "Detalji predmeta"}
       </h1>
+      <IssueOrderCTA
+        id={flag.id}
+        kind="flag"
+        title={flag.candidate_listings?.title ?? "Predmet"}
+        meta={flag.candidate_listings?.neighborhood ?? ""}
+        href={`/dashboard/${flag.id}`}
+        className="mb-6 rounded-lg border p-4 flex items-center gap-3"
+      />
       <EvidenceCard flag={flag} trace={trace} steps={steps} entityLink={entityLink} />
     </div>
   );
