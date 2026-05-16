@@ -1,10 +1,18 @@
 "use client";
 
-import { useState, useEffect, useCallback } from "react";
+import { useState, useEffect, useCallback, useRef } from "react";
+import { useRouter } from "next/navigation";
+import { AnimatePresence, motion } from "motion/react";
 import { createClient } from "@/utils/supabase/client";
 import { Badge } from "@/components/ui/badge";
 import { Button } from "@/components/ui/button";
-import { ArrowSquareOut, CircleNotch, MagnifyingGlass, Globe } from "@phosphor-icons/react";
+import {
+  ArrowSquareOut,
+  CircleNotch,
+  MagnifyingGlass,
+  Globe,
+  CheckCircle,
+} from "@phosphor-icons/react";
 import { DiscoveryDrawer } from "./discovery-drawer";
 import { formatConfidence } from "@/lib/format";
 
@@ -18,7 +26,15 @@ type LatestTrace = {
   final_verdict: string;
   final_confidence: number;
   completed_at: string;
-  evidence_chain: Array<{ step_index: number; fact: string; tool_called: string }> | null;
+  step_count: number;
+};
+
+type TraceStep = {
+  step_index: number;
+  tool_called: string;
+  why: string;
+  updated_hypothesis: string;
+  duration_ms: number | null;
 };
 
 type MatchedListing = {
@@ -30,58 +46,170 @@ type MatchedListing = {
   confidence: number;
 };
 
+const TOOL_LABEL: Record<string, string> = {
+  search_web: "Pretraga weba",
+  fetch_url: "Otvaranje oglasa",
+  search_sudski_registar: "Sudski registar",
+  search_htz_registry: "HTZ registar",
+  get_htz_listing: "HTZ detalji",
+  normalize_croatian: "Normalizacija imena",
+  record_match: "Bilježi pronađen oglas",
+  update_candidate: "Spremam podatke oglasa",
+  record_decision: "Bilježi zaključak",
+  zai_error: "Greška agenta",
+};
+
+const POLL_MS = 1500;
+
 export function DiscoveryTrigger({ registeredId, unitName }: Props) {
-  const [open, setOpen] = useState(false);
+  const router = useRouter();
+  const [drawerOpen, setDrawerOpen] = useState(false);
   const [latest, setLatest] = useState<LatestTrace | null>(null);
   const [matches, setMatches] = useState<MatchedListing[]>([]);
+  const [steps, setSteps] = useState<TraceStep[]>([]);
   const [loaded, setLoaded] = useState(false);
+  const [running, setRunning] = useState(false);
+  const [error, setError] = useState<string | null>(null);
 
-  const load = useCallback(async () => {
+  const pollTimer = useRef<ReturnType<typeof setTimeout> | null>(null);
+  const activeTraceId = useRef<string | null>(null);
+
+  const fetchAll = useCallback(
+    async (traceId: string) => {
+      const supabase = createClient();
+      const [{ data: traceRows }, { data: stepRows }, { data: linkRows }] = await Promise.all([
+        supabase
+          .from("agent_traces")
+          .select("id, final_verdict, final_confidence, completed_at, step_count")
+          .eq("id", traceId)
+          .limit(1),
+        supabase
+          .from("trace_steps")
+          .select("step_index, tool_called, why, updated_hypothesis, duration_ms")
+          .eq("trace_id", traceId)
+          .order("step_index"),
+        supabase
+          .from("entity_links")
+          .select(
+            "confidence, candidate_id, candidate_listings ( id, platform, title, url, host_name )",
+          )
+          .eq("trace_id", traceId),
+      ]);
+
+      const trace = ((traceRows ?? []) as LatestTrace[])[0] ?? null;
+      if (!trace) return null;
+      setLatest(trace);
+      setSteps((stepRows ?? []) as TraceStep[]);
+      setMatches(
+        ((linkRows ?? []) as Array<{
+          confidence: number;
+          candidate_listings: MatchedListing | null;
+        }>)
+          .map((row) =>
+            row.candidate_listings
+              ? { ...row.candidate_listings, confidence: row.confidence }
+              : null,
+          )
+          .filter((m): m is MatchedListing => m !== null)
+          .sort((a, b) => b.confidence - a.confidence),
+      );
+      return trace;
+    },
+    [],
+  );
+
+  const stopPolling = useCallback(() => {
+    if (pollTimer.current) {
+      clearTimeout(pollTimer.current);
+      pollTimer.current = null;
+    }
+  }, []);
+
+  const pollLoop = useCallback(
+    (traceId: string) => {
+      const tick = async () => {
+        if (activeTraceId.current !== traceId) return;
+        const t = await fetchAll(traceId);
+        if (!t) {
+          pollTimer.current = setTimeout(tick, POLL_MS);
+          return;
+        }
+        if (t.final_verdict === "running") {
+          pollTimer.current = setTimeout(tick, POLL_MS);
+        } else {
+          // Catch any late entity_links commits.
+          setTimeout(() => {
+            if (activeTraceId.current === traceId) void fetchAll(traceId);
+          }, 800);
+          setRunning(false);
+          // Revalidate server data so list pages (oglasi, registrirani) pick
+          // up new matches without a manual refresh.
+          router.refresh();
+        }
+      };
+      void tick();
+    },
+    [fetchAll, router],
+  );
+
+  const loadInitial = useCallback(async () => {
     const supabase = createClient();
-    const { data: traceRows } = await supabase
+    const { data: list } = await supabase
       .from("agent_traces")
-      .select("id, final_verdict, final_confidence, completed_at, evidence_chain")
+      .select("id, final_verdict, final_confidence, completed_at, step_count")
       .eq("registered_id", registeredId)
       .order("completed_at", { ascending: false })
       .limit(1);
-    const trace = (traceRows ?? [])[0] as LatestTrace | undefined;
-
+    const trace = ((list ?? []) as LatestTrace[])[0] ?? null;
     if (!trace) {
       setLatest(null);
+      setSteps([]);
       setMatches([]);
       setLoaded(true);
       return;
     }
-
-    const { data: linkRows } = await supabase
-      .from("entity_links")
-      .select(
-        "confidence, candidate_id, candidate_listings ( id, platform, title, url, host_name )",
-      )
-      .eq("trace_id", trace.id);
-
-    const mapped: MatchedListing[] = (
-      (linkRows ?? []) as Array<{
-        confidence: number;
-        candidate_listings: MatchedListing | null;
-      }>
-    )
-      .map((row) =>
-        row.candidate_listings
-          ? { ...row.candidate_listings, confidence: row.confidence }
-          : null,
-      )
-      .filter((m): m is MatchedListing => m !== null)
-      .sort((a, b) => b.confidence - a.confidence);
-
-    setLatest(trace);
-    setMatches(mapped);
+    activeTraceId.current = trace.id;
+    await fetchAll(trace.id);
     setLoaded(true);
-  }, [registeredId]);
+    if (trace.final_verdict === "running") {
+      setRunning(true);
+      pollLoop(trace.id);
+    }
+  }, [registeredId, fetchAll, pollLoop]);
 
   useEffect(() => {
-    void load();
-  }, [load]);
+    void loadInitial();
+    return () => {
+      stopPolling();
+      activeTraceId.current = null;
+    };
+  }, [loadInitial, stopPolling]);
+
+  async function runAgent() {
+    stopPolling();
+    setRunning(true);
+    setError(null);
+    setLatest(null);
+    setSteps([]);
+    setMatches([]);
+    try {
+      const res = await fetch("/api/discover", {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({ registered_id: registeredId }),
+      });
+      if (!res.ok) {
+        const body = await res.json().catch(() => ({}));
+        throw new Error(body.error || `HTTP ${res.status}`);
+      }
+      const data = (await res.json()) as { trace_id: string };
+      activeTraceId.current = data.trace_id;
+      pollLoop(data.trace_id);
+    } catch (err) {
+      setError((err as Error).message);
+      setRunning(false);
+    }
+  }
 
   function badge() {
     if (!loaded) {
@@ -114,36 +242,99 @@ export function DiscoveryTrigger({ registeredId, unitName }: Props) {
     return <Badge variant="outline" className="text-xs">Neodlučno</Badge>;
   }
 
-  const hasResults =
-    latest && latest.final_verdict !== "running" && matches.length > 0;
-
-  const isEmpty = !latest && loaded;
-  const isNoListings = latest?.final_verdict === "no_listings_found";
-  const showCenteredEmpty = isEmpty || isNoListings;
+  const hasResults = latest && latest.final_verdict !== "running" && matches.length > 0;
+  const isEmpty = !latest && loaded && !running;
+  const finishedNoMatches =
+    latest != null && latest.final_verdict !== "running" && matches.length === 0 && !running;
+  const showCenteredEmpty = (isEmpty || finishedNoMatches) && !running;
+  const currentStep = steps.length > 0 ? steps[steps.length - 1] : null;
+  const noMatchCopy: { title: string; sub: string; button: string } =
+    latest?.final_verdict === "no_listings_found"
+      ? {
+          title: "Bez online oglasa",
+          sub: "Agent nije našao podudarne oglase. Objekt vjerojatno nije aktivno oglašen online.",
+          button: "Pokreni ponovno",
+        }
+      : latest?.final_verdict === "error"
+        ? {
+            title: "Greška agenta",
+            sub: "Istraga je prekinuta zbog greške. Pokušaj ponovno ili otvori detalje.",
+            button: "Pokreni ponovno",
+          }
+        : {
+            title: "Neodlučno",
+            sub: "Agent nije pronašao siguran oglas. Pogledaj rezoniranje ili pokreni ponovno.",
+            button: "Pokreni ponovno",
+          };
 
   return (
     <>
-      <div className="rounded-md border h-full flex flex-col">
+      <div className="rounded-md border h-full flex flex-col overflow-hidden">
         {!showCenteredEmpty ? (
           <div className="px-3 py-2 flex items-center justify-between gap-3 border-b">
             <div className="flex items-center gap-2 min-w-0">
               {badge()}
               <span className="text-xs text-muted-foreground truncate">
-                Agent traži oglase na Bookingu/Airbnbu za ovaj objekt.
+                {running
+                  ? `Korak ${steps.length}/~6 — agent pretražuje Booking, Airbnb, sudski registar…`
+                  : "Agent traži oglase na Bookingu/Airbnbu za ovaj objekt."}
               </span>
             </div>
-            <Button size="sm" variant="outline" onClick={() => setOpen(true)} className="shrink-0">
+            <Button
+              size="sm"
+              variant="outline"
+              onClick={() => setDrawerOpen(true)}
+              className="shrink-0"
+              disabled={!latest}
+            >
               <MagnifyingGlass size={14} className="mr-1" />
-              {latest ? "Detalji" : "Pokreni"}
+              Detalji
             </Button>
           </div>
         ) : null}
 
-        {hasResults ? (
+        {running ? (
+          <div className="flex-1 px-3 py-4 flex items-center justify-center">
+            <AnimatePresence mode="popLayout" initial={false}>
+              {currentStep ? (
+                <motion.div
+                  key={currentStep.step_index}
+                  initial={{ opacity: 0, y: 14, filter: "blur(8px)" }}
+                  animate={{ opacity: 1, y: 0, filter: "blur(0px)" }}
+                  exit={{ opacity: 0, y: -18, filter: "blur(8px)" }}
+                  transition={{ duration: 0.45, ease: [0.22, 1, 0.36, 1] }}
+                  className="text-center space-y-2 max-w-[36ch]"
+                >
+                  <div className="text-[10px] uppercase tracking-wide text-muted-foreground">
+                    {TOOL_LABEL[currentStep.tool_called] ?? currentStep.tool_called}
+                  </div>
+                  <div className="text-sm font-medium leading-snug">
+                    {currentStep.why || currentStep.updated_hypothesis || "…"}
+                  </div>
+                </motion.div>
+              ) : (
+                <motion.div
+                  key="agent-thinking"
+                  initial={{ opacity: 0, filter: "blur(8px)" }}
+                  animate={{ opacity: 1, filter: "blur(0px)" }}
+                  exit={{ opacity: 0, filter: "blur(8px)" }}
+                  transition={{ duration: 0.4 }}
+                  className="flex items-center gap-2 text-xs text-muted-foreground"
+                >
+                  <CircleNotch size={14} className="animate-spin" />
+                  Pokrećem agenta…
+                </motion.div>
+              )}
+            </AnimatePresence>
+          </div>
+        ) : hasResults ? (
           <ul className="px-3 py-2 space-y-1 text-xs flex-1">
             {matches.map((m) => (
-              <li
+              <motion.li
                 key={m.id}
+                initial={{ opacity: 0, y: 6, filter: "blur(6px)" }}
+                animate={{ opacity: 1, y: 0, filter: "blur(0px)" }}
+                transition={{ duration: 0.35 }}
                 className="flex items-center justify-between gap-2 min-w-0"
               >
                 <div className="flex items-center gap-2 min-w-0">
@@ -173,7 +364,7 @@ export function DiscoveryTrigger({ registeredId, unitName }: Props) {
                     </a>
                   ) : null}
                 </div>
-              </li>
+              </motion.li>
             ))}
           </ul>
         ) : showCenteredEmpty ? (
@@ -187,36 +378,64 @@ export function DiscoveryTrigger({ registeredId, unitName }: Props) {
                 <p className="text-xs text-muted-foreground max-w-[28ch] leading-snug">
                   Pokreni AI istragu da pronađemo oglase ovog objekta na Bookingu, Airbnbu i drugim platformama.
                 </p>
-                <Button size="sm" onClick={() => setOpen(true)} className="mt-1">
+                <Button size="sm" onClick={runAgent} className="mt-1" disabled={running}>
                   <MagnifyingGlass size={14} className="mr-1" />
                   Pokreni istragu
                 </Button>
               </>
             ) : (
               <>
-                <p className="text-sm font-medium">Bez online oglasa</p>
+                <p className="text-sm font-medium">{noMatchCopy.title}</p>
                 <p className="text-xs text-muted-foreground max-w-[28ch] leading-snug">
-                  Agent nije našao oglase. Objekt vjerojatno nije aktivno oglašen online.
+                  {noMatchCopy.sub}
                 </p>
-                <Button size="sm" variant="outline" onClick={() => setOpen(true)} className="mt-1">
-                  <MagnifyingGlass size={14} className="mr-1" />
-                  Pokreni ponovno
-                </Button>
               </>
             )}
+            {error ? <p className="text-xs text-destructive mt-2">{error}</p> : null}
           </div>
         ) : (
           <div className="flex-1 flex items-center justify-center px-4 py-6 text-xs text-muted-foreground">
             Učitavanje…
           </div>
         )}
+
+        {/* Footer actions for any finished run (with or without matches) */}
+        {latest && !running ? (
+          <div className="border-t px-3 py-1.5 flex items-center justify-between gap-2">
+            <span className="text-[11px] text-muted-foreground flex items-center gap-1">
+              {hasResults ? (
+                <>
+                  <CheckCircle size={11} weight="fill" className="text-success" />
+                  Završeno · {latest.step_count} {latest.step_count === 1 ? "korak" : "koraka"}
+                </>
+              ) : (
+                <>
+                  Pretraga završena · {latest.step_count} {latest.step_count === 1 ? "korak" : "koraka"}
+                </>
+              )}
+            </span>
+            <div className="flex items-center gap-1">
+              <Button
+                size="sm"
+                variant="ghost"
+                onClick={() => setDrawerOpen(true)}
+                className="h-6 text-xs"
+              >
+                Detalji rezoniranja
+              </Button>
+              <Button size="sm" variant="ghost" onClick={runAgent} className="h-6 text-xs">
+                {hasResults ? "Pokreni ponovno" : noMatchCopy.button}
+              </Button>
+            </div>
+          </div>
+        ) : null}
       </div>
 
       <DiscoveryDrawer
-        open={open}
+        open={drawerOpen}
         onClose={() => {
-          setOpen(false);
-          void load();
+          setDrawerOpen(false);
+          void loadInitial();
         }}
         mode="discovery"
         id={registeredId}
