@@ -26,26 +26,33 @@ export async function GET() {
       .limit(500),
   ]);
 
-  // Match the dashboard fallback rules
-  const flagCount =
+  // Mirror /dashboard/page.tsx: real flags if any, else MOCK_FLAGS fallback
+  const flagIds: string[] =
     flagsRes.data && flagsRes.data.length > 0
-      ? flagsRes.data.length
-      : MOCK_FLAGS.length;
+      ? flagsRes.data.map((f) => f.id as string)
+      : MOCK_FLAGS.map((f) => f.id);
 
-  // Mirror dashboard/page.tsx — only "red" monitoring statuses surface as todos
   const registered = (registeredRes.data as RegisteredRow[] | null) ?? [];
-  const computedRed = registered.filter((u) => {
-    const status = monitoringStatusFor({
-      id: u.id,
-      name: u.name,
-      beds: u.beds,
-      category: u.category,
-    });
-    return status.kind === "occupied_silent" || status.kind === "empty_reporting";
-  }).length;
+  const computedRedIds = registered
+    .filter((u) => {
+      const status = monitoringStatusFor({
+        id: u.id,
+        name: u.name,
+        beds: u.beds,
+        category: u.category,
+      });
+      return status.kind === "occupied_silent" || status.kind === "empty_reporting";
+    })
+    .map((u) => u.id);
 
-  const monitoringCount = DEMO_MONITORING_ALERTS.length + computedRed;
-  const total = flagCount + monitoringCount;
+  // Dedupe: demo alerts override computed (matches dashboard/page.tsx)
+  const demoIds = new Set(DEMO_MONITORING_ALERTS.map((d) => d.id));
+  const monitoringIds = [
+    ...DEMO_MONITORING_ALERTS.map((d) => d.id),
+    ...computedRedIds.filter((id) => !demoIds.has(id)),
+  ];
 
-  return NextResponse.json({ total, flagCount, monitoringCount });
+  const ids = [...flagIds, ...monitoringIds];
+
+  return NextResponse.json({ ids, total: ids.length });
 }

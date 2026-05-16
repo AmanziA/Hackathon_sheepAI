@@ -243,7 +243,9 @@ function FlagRow({
           )}
         </div>
       </div>
-      <ConfidenceBadge score={flag.confidence_unregistered} size="sm" />
+      <div className="ml-auto shrink-0">
+        <ConfidenceBadge score={flag.confidence_unregistered} size="sm" />
+      </div>
     </div>
   );
 }

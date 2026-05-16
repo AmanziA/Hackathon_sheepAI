@@ -32,19 +32,21 @@ export function AppShell({ children }: Props) {
   const pathname = usePathname();
   const [running, setRunning] = useState(false);
   const { items: resolvedItems } = useResolved();
-  const [queueTotal, setQueueTotal] = useState<number | null>(null);
+  const [queueIds, setQueueIds] = useState<string[] | null>(null);
 
-  // Pull the real queue size from the server so the sidebar matches the
-  // /dashboard list (which queries Supabase + computed monitoring reds).
+  // Pull the actual queue ids from the server so the sidebar count only
+  // subtracts resolved items that are still in the queue. Otherwise stale
+  // localStorage resolutions from earlier sessions would shrink the count
+  // even though those items aren't in the current list.
   useEffect(() => {
     let cancelled = false;
     fetch("/api/queue-count", { cache: "no-store" })
       .then((r) => r.json())
-      .then((d: { total: number }) => {
-        if (!cancelled) setQueueTotal(d.total);
+      .then((d: { ids: string[] }) => {
+        if (!cancelled) setQueueIds(d.ids);
       })
       .catch(() => {
-        if (!cancelled) setQueueTotal(null);
+        if (!cancelled) setQueueIds(null);
       });
     return () => {
       cancelled = true;
@@ -52,10 +54,9 @@ export function AppShell({ children }: Props) {
   }, [pathname]);
 
   const todoCount = useMemo(() => {
-    if (queueTotal == null) return null;
-    const resolvedIds = new Set(Object.keys(resolvedItems));
-    return Math.max(0, queueTotal - resolvedIds.size);
-  }, [resolvedItems, queueTotal]);
+    if (queueIds == null) return null;
+    return queueIds.filter((id) => !resolvedItems[id]).length;
+  }, [resolvedItems, queueIds]);
 
   function isActive(href: string, exact = false) {
     if (exact) return pathname === href;
