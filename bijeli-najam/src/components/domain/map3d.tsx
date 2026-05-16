@@ -21,6 +21,7 @@ interface Marker {
   lon: number;
   confidence: number;
   title?: string;
+  color?: [number, number, number, number];
 }
 
 interface Props {
@@ -60,7 +61,10 @@ export default function Map3D({ markers, onMarkerClick, className }: Props) {
       data: markers,
       getPosition: (d) => [d.lon, d.lat],
       getRadius: (d) => 28 + d.confidence * 18,
-      getFillColor: (d) => { const [r, g, b] = confidenceColor(d.confidence); return [r, g, b, 35]; },
+      getFillColor: (d) => {
+        const [r, g, b] = d.color ?? confidenceColor(d.confidence);
+        return [r, g, b, 35];
+      },
       radiusUnits: "meters",
       pickable: false,
     }),
@@ -70,7 +74,7 @@ export default function Map3D({ markers, onMarkerClick, className }: Props) {
       data: markers,
       getPosition: (d) => [d.lon, d.lat],
       getElevation: (d) => d.confidence * 180,
-      getFillColor: (d) => confidenceColor(d.confidence),
+      getFillColor: (d) => d.color ?? confidenceColor(d.confidence),
       getLineColor: [255, 255, 255, 50],
       radius: 22,
       extruded: true,
