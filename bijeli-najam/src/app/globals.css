@@ -75,8 +75,8 @@
   --brand-gray-600:   #5F6B74;
   --brand-black:      #23242A;
 
-  /* Surfaces — clean white */
-  --background: var(--brand-white);
+  /* Surfaces — warm cream page background, white cards on top */
+  --background: var(--brand-orange-50);
   --foreground: var(--brand-black);
   --card: var(--brand-white);
   --card-foreground: var(--brand-black);
@@ -107,8 +107,10 @@
   --accent-orange: var(--brand-orange-500);
   --accent-orange-foreground: var(--brand-white);
 
-  --border: var(--brand-gray-200);
-  --input: var(--brand-gray-200);
+  /* Softer borders — color-mix midway between the lightest gray and the
+     mid gray so card outlines don't read as heavy on the cream bg */
+  --border: color-mix(in oklch, var(--brand-gray-50) 55%, var(--brand-gray-200));
+  --input: color-mix(in oklch, var(--brand-gray-50) 55%, var(--brand-gray-200));
   --ring: var(--brand-blue-500);
   --chart-1: oklch(0.87 0 0);
   --chart-2: oklch(0.556 0 0);
@@ -178,7 +180,7 @@
   /* Paper texture — warm cream background with a faint architectural-drafting
      dot grid + an even fainter offset grid line for measured-paper feel. */
   .bg-paper {
-    background-color: var(--brand-white);
+    background-color: var(--brand-orange-50);
   }
 
   /* Decorative ruler tick marks on the bottom-left edge of a container.
