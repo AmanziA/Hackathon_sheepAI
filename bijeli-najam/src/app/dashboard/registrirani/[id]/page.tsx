@@ -81,15 +81,16 @@ export default async function RegistriraniDetailPage({ params }: Props) {
 
   const demoAlert = demoAlertById(id);
 
-  const { data } = demoAlert
-    ? { data: null }
+  const result = demoAlert
+    ? { data: null, error: null }
     : await supabase
         .from("registered_units")
         .select(
           "id, name, owner, neighborhood, address, street, number, beds, category, stars, scraped_at"
         )
         .eq("id", id)
-        .maybeSingle();
+        .limit(1);
+  const data = (result.data ?? [])[0] ?? null;
 
   let unit: RegisteredUnit | null = (data as RegisteredUnit | null) ?? MOCK_BY_ID[id] ?? null;
   if (!unit && demoAlert) {
