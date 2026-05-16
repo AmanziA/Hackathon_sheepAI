@@ -1,6 +1,6 @@
 "use client";
 
-import { useMemo, useState } from "react";
+import { useEffect, useMemo, useRef, useState } from "react";
 import dynamic from "next/dynamic";
 import { Input } from "@/components/ui/input";
 import { Button, buttonVariants } from "@/components/ui/button";
@@ -14,6 +14,7 @@ import {
   CurrencyEur,
   ChartLineUp,
   Clock,
+  Spinner,
 } from "@phosphor-icons/react";
 import { ConfidenceBadge } from "./confidence-badge";
 import { lookupAddress, type LookupResult } from "@/lib/lookup-mock";
@@ -25,23 +26,153 @@ const Map3D = dynamic(() => import("./map3d"), { ssr: false });
 const ADDRESS_BLUE: [number, number, number, number] = [37, 99, 235, 230];
 const REGISTERED_GREEN: [number, number, number, number] = [22, 163, 74, 220];
 
+// Split viewbox (left, top, right, bottom) — constrains Nominatim search
+const SPLIT_VIEWBOX = "16.38,43.55,16.55,43.46";
+
 type Tab = "flagged" | "registered" | "recent";
+
+type Suggestion = {
+  display: string;
+  short: string;
+  lat: number;
+  lon: number;
+};
 
 export function AddressLookup() {
   const [address, setAddress] = useState("");
   const [loading, setLoading] = useState(false);
   const [result, setResult] = useState<LookupResult | null>(null);
   const [tab, setTab] = useState<Tab>("flagged");
+  const [suggestions, setSuggestions] = useState<Suggestion[]>([]);
+  const [suggestLoading, setSuggestLoading] = useState(false);
+  const [suggestOpen, setSuggestOpen] = useState(false);
+  const [activeIdx, setActiveIdx] = useState(-1);
+  const skipNextFetch = useRef(false);
+  const inputWrapRef = useRef<HTMLDivElement>(null);
 
-  async function handleSubmit(e: React.FormEvent<HTMLFormElement>) {
-    e.preventDefault();
-    if (!address.trim()) return;
+  // Debounced Nominatim autocomplete
+  useEffect(() => {
+    const q = address.trim();
+    if (skipNextFetch.current) {
+      skipNextFetch.current = false;
+      return;
+    }
+    if (q.length < 3) {
+      setSuggestions([]);
+      setSuggestOpen(false);
+      return;
+    }
 
+    const ctrl = new AbortController();
+    const timer = setTimeout(async () => {
+      setSuggestLoading(true);
+      try {
+        const url = new URL("https://nominatim.openstreetmap.org/search");
+        url.searchParams.set("q", `${q}, Split`);
+        url.searchParams.set("format", "jsonv2");
+        url.searchParams.set("addressdetails", "1");
+        url.searchParams.set("limit", "6");
+        url.searchParams.set("viewbox", SPLIT_VIEWBOX);
+        url.searchParams.set("bounded", "1");
+        url.searchParams.set("accept-language", "hr");
+        const res = await fetch(url.toString(), {
+          signal: ctrl.signal,
+          headers: { "Accept-Language": "hr" },
+        });
+        if (!res.ok) throw new Error("nominatim");
+        const data = (await res.json()) as Array<{
+          display_name: string;
+          lat: string;
+          lon: string;
+          address?: {
+            road?: string;
+            house_number?: string;
+            suburb?: string;
+            neighbourhood?: string;
+            city?: string;
+            town?: string;
+          };
+        }>;
+        const items: Suggestion[] = data.map((r) => {
+          const a = r.address ?? {};
+          const street = [a.road, a.house_number].filter(Boolean).join(" ");
+          const area = a.suburb ?? a.neighbourhood ?? a.city ?? a.town ?? "";
+          const short = street ? `${street}${area ? `, ${area}` : ""}` : r.display_name.split(",").slice(0, 2).join(", ");
+          return {
+            display: r.display_name,
+            short: short.trim(),
+            lat: Number(r.lat),
+            lon: Number(r.lon),
+          };
+        });
+        setSuggestions(items);
+        setSuggestOpen(items.length > 0);
+        setActiveIdx(-1);
+      } catch (err) {
+        if ((err as Error).name !== "AbortError") {
+          setSuggestions([]);
+          setSuggestOpen(false);
+        }
+      } finally {
+        setSuggestLoading(false);
+      }
+    }, 280);
+
+    return () => {
+      clearTimeout(timer);
+      ctrl.abort();
+    };
+  }, [address]);
+
+  // Close dropdown on outside click
+  useEffect(() => {
+    function onClickOutside(e: MouseEvent) {
+      if (!inputWrapRef.current?.contains(e.target as Node)) setSuggestOpen(false);
+    }
+    document.addEventListener("mousedown", onClickOutside);
+    return () => document.removeEventListener("mousedown", onClickOutside);
+  }, []);
+
+  function runLookup(addr: string) {
     setLoading(true);
     setResult(null);
-    await new Promise((r) => setTimeout(r, 600));
-    setResult(lookupAddress(address.trim()));
-    setLoading(false);
+    setSuggestOpen(false);
+    // tiny delay so the spinner registers, then synchronously lookup mock data
+    setTimeout(() => {
+      setResult(lookupAddress(addr));
+      setLoading(false);
+    }, 350);
+  }
+
+  function selectSuggestion(s: Suggestion) {
+    skipNextFetch.current = true;
+    setAddress(s.short);
+    setSuggestOpen(false);
+    setActiveIdx(-1);
+    runLookup(s.short);
+  }
+
+  function handleSubmit(e: React.FormEvent<HTMLFormElement>) {
+    e.preventDefault();
+    if (activeIdx >= 0 && suggestions[activeIdx]) {
+      selectSuggestion(suggestions[activeIdx]);
+      return;
+    }
+    if (!address.trim()) return;
+    runLookup(address.trim());
+  }
+
+  function handleKeyDown(e: React.KeyboardEvent<HTMLInputElement>) {
+    if (!suggestOpen || suggestions.length === 0) return;
+    if (e.key === "ArrowDown") {
+      e.preventDefault();
+      setActiveIdx((i) => (i + 1) % suggestions.length);
+    } else if (e.key === "ArrowUp") {
+      e.preventDefault();
+      setActiveIdx((i) => (i <= 0 ? suggestions.length - 1 : i - 1));
+    } else if (e.key === "Escape") {
+      setSuggestOpen(false);
+    }
   }
 
   const markers = useMemo(() => {
@@ -79,15 +210,56 @@ export function AddressLookup() {
 
   return (
     <div className="space-y-6">
-      <form onSubmit={handleSubmit} className="flex gap-2">
-        <Input
-          value={address}
-          onChange={(e) => setAddress(e.target.value)}
-          placeholder="npr. Spinčićeva 5, Split"
-          className="flex-1"
-          aria-label="Unesite adresu"
-          required
-        />
+      <form onSubmit={handleSubmit} className="flex gap-2 relative">
+        <div ref={inputWrapRef} className="flex-1 relative">
+          <Input
+            value={address}
+            onChange={(e) => setAddress(e.target.value)}
+            onFocus={() => suggestions.length > 0 && setSuggestOpen(true)}
+            onKeyDown={handleKeyDown}
+            placeholder="npr. Spinčićeva 5, Split"
+            aria-label="Unesite adresu"
+            aria-autocomplete="list"
+            aria-expanded={suggestOpen}
+            required
+            autoComplete="off"
+          />
+          {suggestLoading && (
+            <Spinner
+              size={14}
+              className="absolute right-2.5 top-1/2 -translate-y-1/2 text-muted-foreground animate-spin pointer-events-none"
+            />
+          )}
+          {suggestOpen && suggestions.length > 0 && (
+            <ul
+              role="listbox"
+              className="absolute z-20 left-0 right-0 top-full mt-1 bg-popover border rounded-md shadow-lg overflow-hidden text-sm"
+            >
+              {suggestions.map((s, i) => (
+                <li
+                  key={`${s.lat}-${s.lon}-${i}`}
+                  role="option"
+                  aria-selected={i === activeIdx}
+                  onMouseEnter={() => setActiveIdx(i)}
+                  onMouseDown={(e) => {
+                    e.preventDefault();
+                    selectSuggestion(s);
+                  }}
+                  className={cn(
+                    "px-3 py-2 cursor-pointer flex items-start gap-2",
+                    i === activeIdx ? "bg-muted" : "hover:bg-muted/60"
+                  )}
+                >
+                  <MapPin size={14} className="text-muted-foreground mt-0.5 shrink-0" />
+                  <div className="min-w-0">
+                    <p className="truncate">{s.short}</p>
+                    <p className="text-xs text-muted-foreground truncate">{s.display}</p>
+                  </div>
+                </li>
+              ))}
+            </ul>
+          )}
+        </div>
         <Button type="submit" disabled={loading} className="gap-2">
           <MagnifyingGlass size={16} />
           {loading ? "Tražim..." : "Pretraži"}
