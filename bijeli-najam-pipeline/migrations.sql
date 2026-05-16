@@ -20,10 +20,23 @@ create table if not exists registered_units (
   lat             double precision,
   lon             double precision,
   raw_address     text,
+  source_id       text,
+  postcode        text,
+  oib             text,
+  mbo             text,
+  extra_beds      int,
   scraped_at      timestamptz not null default now()
 );
 create index if not exists idx_registered_units_city_nb on registered_units (city, neighborhood);
 create index if not exists idx_registered_units_latlon on registered_units (lat, lon);
+create index if not exists idx_registered_units_oib on registered_units (oib);
+
+-- Idempotent column adds (for environments where the table predates this change)
+alter table registered_units add column if not exists source_id text;
+alter table registered_units add column if not exists postcode text;
+alter table registered_units add column if not exists oib text;
+alter table registered_units add column if not exists mbo text;
+alter table registered_units add column if not exists extra_beds int;
 
 -- 2. candidate_listings
 create table if not exists candidate_listings (
