@@ -1,7 +1,6 @@
 "use client";
 
 import React, { useState, useMemo } from "react";
-import dynamic from "next/dynamic";
 import { useResolved, type Resolution } from "@/lib/resolved-store";
 import {
   Sheet,
@@ -35,8 +34,6 @@ import {
 import { formatEur } from "@/lib/format";
 import { cn } from "@/lib/utils";
 import type { Flag } from "@/lib/types";
-
-const Map3D = dynamic(() => import("@/components/domain/map3d"), { ssr: false });
 
 const AUTO_FLAG_THRESHOLD = 0.9;
 
@@ -147,27 +144,6 @@ export function DashboardClient({ flags, monitoringAlerts = [] }: Props) {
     if (selectedMonitoringId === id) setSelectedMonitoringId(null);
   }
 
-  const mapMarkers = [
-    ...open
-      .filter((f) => f.candidate_listings?.approx_lat && f.candidate_listings?.approx_lon)
-      .map((f) => ({
-        id: f.id,
-        lat: f.candidate_listings!.approx_lat!,
-        lon: f.candidate_listings!.approx_lon!,
-        confidence: f.confidence_unregistered,
-        title: f.candidate_listings?.title,
-      })),
-    ...allMonitoring
-      .filter((m) => m.lat != null && m.lon != null)
-      .map((m) => ({
-        id: m.id,
-        lat: m.lat!,
-        lon: m.lon!,
-        confidence: 0.85,
-        title: `${m.name} · ${m.status === "occupied_silent" ? "ne prijavljuje" : "prazan, prijavljuje"}`,
-      })),
-  ];
-
   return (
     <div className="flex flex-col h-full">
       {/* Top bar */}
@@ -225,8 +201,7 @@ export function DashboardClient({ flags, monitoringAlerts = [] }: Props) {
       </div>
 
       <div className="flex flex-1 overflow-hidden">
-        {/* Left: action list */}
-        <div className="w-[58%] overflow-y-auto flex flex-col">
+        <div className="w-full overflow-y-auto flex flex-col">
 
           {/* Empty state */}
           {open.length === 0 && monitoringRows.length === 0 && (
@@ -314,18 +289,6 @@ export function DashboardClient({ flags, monitoringAlerts = [] }: Props) {
             </section>
           )}
 
-        </div>
-
-        {/* Right: 3D map */}
-        <div className="flex-1 border-l">
-          <Map3D
-            markers={mapMarkers}
-            onMarkerClick={(id: string) => {
-              if (monitoringAlerts.some((m) => m.id === id)) setSelectedMonitoringId(id);
-              else setSelectedId(id);
-            }}
-            className="h-full w-full"
-          />
         </div>
       </div>
 

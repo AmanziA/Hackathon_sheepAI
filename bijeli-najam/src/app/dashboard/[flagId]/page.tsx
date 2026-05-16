@@ -1,5 +1,6 @@
 import { notFound } from "next/navigation";
 import { EvidenceCard } from "@/components/domain/evidence-card";
+import { BackLink } from "@/components/domain/back-link";
 import { MOCK_FLAGS, MOCK_TRACE_STEPS, MOCK_ENTITY_LINKS } from "@/lib/mock-data";
 
 interface Props {
@@ -18,9 +19,11 @@ export default async function FlagDetailPage({ params }: Props) {
 
   return (
     <div className="max-w-3xl mx-auto px-6 py-10">
-      <a href="/dashboard" className="text-sm text-muted-foreground hover:underline mb-6 inline-block">
-        ← Natrag na popis
-      </a>
+      <BackLink
+        fallback="/dashboard"
+        label="← Natrag na popis"
+        className="text-sm text-muted-foreground hover:underline mb-6 inline-block"
+      />
       <h1 className="text-2xl font-bold tracking-tight mb-8">
         {flag.candidate_listings?.title ?? "Detalji predmeta"}
       </h1>

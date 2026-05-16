@@ -1,14 +1,12 @@
-"use client";
-
 import Link from "next/link";
 import { buttonVariants } from "@/components/ui/button";
-import { MagnifyingGlass, ChartBar } from "@phosphor-icons/react";
-import { PublicShell } from "@/components/domain/public-shell";
+import { MagnifyingGlass, ChartBar } from "@phosphor-icons/react/dist/ssr";
+import { AppShell } from "@/components/domain/app-shell";
 import { cn } from "@/lib/utils";
 
 export default function HomePage() {
   return (
-    <PublicShell>
+    <AppShell>
       <div className="max-w-3xl mx-auto px-6 py-24 space-y-10">
         <div className="space-y-4">
           <h1 className="text-4xl font-bold tracking-tight">
@@ -45,6 +43,6 @@ export default function HomePage() {
           ))}
         </div>
       </div>
-    </PublicShell>
+    </AppShell>
   );
 }

@@ -1,5 +1,5 @@
-import { PublicShell } from "@/components/domain/public-shell";
+import { AppShell } from "@/components/domain/app-shell";
 
 export default function PublicLayout({ children }: { children: React.ReactNode }) {
-  return <PublicShell>{children}</PublicShell>;
+  return <AppShell>{children}</AppShell>;
 }

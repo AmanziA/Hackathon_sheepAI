@@ -41,10 +41,13 @@ export function AppShell({ children }: Props) {
   return (
     <div className="min-h-screen flex">
       <aside className="w-52 border-r bg-background flex flex-col shrink-0">
-        <div className="h-14 flex items-center gap-2.5 px-4 border-b">
+        <Link
+          href="/dashboard"
+          className="h-14 flex items-center gap-2.5 px-4 border-b"
+        >
           <Buildings size={18} />
           <span className="font-semibold text-sm tracking-tight">Bijeli Najam</span>
-        </div>
+        </Link>
 
         <div className="px-3 py-3 border-b">
           <button
@@ -80,7 +83,6 @@ export function AppShell({ children }: Props) {
               </span>
             )}
           </Link>
-
           <NavItem
             href="/dashboard/monitoring"
             label="Monitoring"

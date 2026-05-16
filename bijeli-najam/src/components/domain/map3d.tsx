@@ -105,29 +105,25 @@ export default function Map3D({ markers, onMarkerClick, className }: Props) {
 
       {tooltip && (
         <div
-          className="absolute z-10 pointer-events-none bg-background border rounded-lg shadow-lg px-3 py-2 text-sm max-w-[200px]"
+          className="absolute z-10 pointer-events-none bg-background border rounded-lg shadow-lg px-3 py-2 text-sm max-w-[260px]"
           style={{ left: tooltip.x + 14, top: tooltip.y - 52 }}
         >
-          <p className="font-medium truncate">{tooltip.title}</p>
-          <p className="text-xs text-muted-foreground">
-            Pouzdanost: {Math.round(tooltip.confidence * 100)}%
-          </p>
+          <p className="font-medium leading-snug">{tooltip.title}</p>
         </div>
       )}
 
       <div className="absolute bottom-4 left-4 z-10 bg-background/90 backdrop-blur border rounded-lg px-3 py-2 text-xs space-y-1 shadow">
-        <p className="font-semibold mb-1">Pouzdanost</p>
+        <p className="font-semibold mb-1">Intenzitet</p>
         {[
-          { label: "≥70% visoka", color: "bg-red-600" },
-          { label: "40–70% srednja", color: "bg-amber-500" },
-          { label: "<40% niska", color: "bg-gray-500" },
+          { label: "visok", color: "bg-red-600" },
+          { label: "srednji", color: "bg-amber-500" },
+          { label: "nizak", color: "bg-gray-500" },
         ].map((item) => (
           <div key={item.label} className="flex items-center gap-2">
             <div className={`w-2.5 h-2.5 rounded-sm ${item.color}`} />
             <span className="text-muted-foreground">{item.label}</span>
           </div>
         ))}
-        <p className="text-muted-foreground pt-1 border-t">Visina stupa = pouzdanost</p>
       </div>
 
       <div className="absolute top-3 right-3 z-10 bg-background/80 backdrop-blur border rounded-md px-2 py-1 text-xs text-muted-foreground select-none shadow">

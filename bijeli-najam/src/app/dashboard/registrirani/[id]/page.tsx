@@ -1,6 +1,6 @@
 import { notFound } from "next/navigation";
-import Link from "next/link";
 import { cookies } from "next/headers";
+import { BackLink } from "@/components/domain/back-link";
 import { Badge } from "@/components/ui/badge";
 import { Separator } from "@/components/ui/separator";
 import {
@@ -155,12 +155,7 @@ export default async function RegistriraniDetailPage({ params }: Props) {
 
   return (
     <div className="max-w-3xl mx-auto px-6 py-10 space-y-8">
-      <Link
-        href="/dashboard/registrirani"
-        className="text-sm text-muted-foreground hover:underline inline-block"
-      >
-        ← Natrag na popis
-      </Link>
+      <BackLink fallback="/dashboard/registrirani" label="← Natrag" />
 
       <header className="space-y-3">
         <div className="flex items-start justify-between gap-4">

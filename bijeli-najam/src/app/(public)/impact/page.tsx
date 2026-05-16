@@ -1,6 +1,7 @@
 import { cookies } from "next/headers";
 import { StatNumber } from "@/components/domain/stat-number";
 import { NeighborhoodBar } from "@/components/domain/neighborhood-bar";
+import { ImpactMap } from "@/components/domain/impact-map";
 import { createClient } from "@/utils/supabase/server";
 import type { Neighborhood } from "@/lib/types";
 
@@ -56,6 +57,14 @@ export default async function ImpactPage() {
         <StatNumber value={flagCount} label="Označenih oglasa u Splitu" />
         <StatNumber value={totalLoss} label="Procijenjeni godišnji gubitak (EUR)" format="eur" />
         <StatNumber value={neighborhoods.length} label="Zahvaćenih kvartova" />
+      </div>
+
+      <div className="space-y-3">
+        <h2 className="text-xl font-semibold tracking-tight">Mapa gubitaka po kvartu</h2>
+        <p className="text-sm text-muted-foreground">
+          Visina stupa = godišnji gubitak. Crveno = najviše. Klikni / hover za detalje.
+        </p>
+        <ImpactMap neighborhoods={neighborhoods} />
       </div>
 
       <div className="space-y-4">
