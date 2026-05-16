@@ -26,7 +26,10 @@ import {
   hepFor,
   vodovodFor,
   monitoringStatusFor,
+  type EvisitorRecord,
+  type UtilityReading,
 } from "@/lib/evisitor-mock";
+import { demoAlertById } from "@/lib/monitoring-demo";
 import { cn } from "@/lib/utils";
 import type { RegisteredUnit } from "../registrirani-client";
 
@@ -75,26 +78,79 @@ export default async function RegistriraniDetailPage({ params }: Props) {
   const cookieStore = await cookies();
   const supabase = createClient(cookieStore);
 
-  const { data } = await supabase
-    .from("registered_units")
-    .select("id, name, owner, neighborhood, address, street, number, beds, category, stars, scraped_at")
-    .eq("id", id)
-    .maybeSingle();
+  const demoAlert = demoAlertById(id);
 
-  const unit: RegisteredUnit | null = (data as RegisteredUnit | null) ?? MOCK_BY_ID[id] ?? null;
+  const { data } = demoAlert
+    ? { data: null }
+    : await supabase
+        .from("registered_units")
+        .select(
+          "id, name, owner, neighborhood, address, street, number, beds, category, stars, scraped_at"
+        )
+        .eq("id", id)
+        .maybeSingle();
+
+  let unit: RegisteredUnit | null = (data as RegisteredUnit | null) ?? MOCK_BY_ID[id] ?? null;
+  if (!unit && demoAlert) {
+    unit = {
+      id: demoAlert.id,
+      name: demoAlert.name,
+      owner: demoAlert.owner,
+      neighborhood: demoAlert.neighborhood,
+      address: null,
+      street: null,
+      number: null,
+      beds: demoAlert.beds,
+      category: "Apartman",
+      stars: null,
+      scraped_at: "2026-05-14",
+    };
+  }
   if (!unit) notFound();
 
-  const record = evisitorFor({
+  const baseRecord = evisitorFor({
     id: unit.id,
     name: unit.name,
     beds: unit.beds,
     category: unit.category,
   });
+  const record: EvisitorRecord = demoAlert
+    ? {
+        ...baseRecord,
+        mbo: demoAlert.mbo,
+        status: demoAlert.status === "empty_reporting" ? "aktivan" : "aktivan",
+        registered_beds: demoAlert.beds ?? baseRecord.registered_beds,
+        reported_nights_ytd: demoAlert.reported_nights_ytd,
+        last_check_in_at: demoAlert.last_check_in_at,
+        tax_paid_ytd_eur:
+          Math.round(demoAlert.reported_nights_ytd * 1.65 * 100) / 100,
+      }
+    : baseRecord;
   const stays = staysFor({ id: unit.id });
   const calendar = occupancyByDay(stays, 90);
-  const hep = hepFor({ id: unit.id });
-  const vodovod = vodovodFor({ id: unit.id });
-  const monitoring = monitoringStatusFor(unit);
+  const baseHep = hepFor({ id: unit.id });
+  const baseVod = vodovodFor({ id: unit.id });
+  const hep: UtilityReading = demoAlert
+    ? {
+        ...baseHep,
+        avg_per_period: demoAlert.hep_kwh_per_day,
+        last_value: demoAlert.hep_kwh_per_day,
+        occupancy_ratio:
+          Math.round((demoAlert.hep_kwh_per_day / baseHep.baseline_empty) * 10) / 10,
+      }
+    : baseHep;
+  const vodovod: UtilityReading = demoAlert
+    ? {
+        ...baseVod,
+        avg_per_period: demoAlert.vodovod_m3_per_month,
+        last_value: demoAlert.vodovod_m3_per_month,
+        occupancy_ratio:
+          Math.round((demoAlert.vodovod_m3_per_month / baseVod.baseline_empty) * 10) / 10,
+      }
+    : baseVod;
+  const monitoring = demoAlert
+    ? { kind: demoAlert.status, reason: demoAlert.reason }
+    : monitoringStatusFor(unit);
   const monitoringMeta = STATUS_BADGE[monitoring.kind];
 
   return (
