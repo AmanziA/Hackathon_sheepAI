@@ -29,6 +29,8 @@ import {
   Question,
   FilePdf,
   X,
+  Lightning,
+  Drop,
   ArrowSquareOut as LinkIcon,
 } from "@phosphor-icons/react";
 import { formatEur } from "@/lib/format";
@@ -385,7 +387,15 @@ const TOOL_ICONS: Record<string, React.ReactNode> = {
   phash_compare: <Image size={14} />,
   geocode: <MapPin size={14} />,
   normalize_croatian: <FileText size={14} />,
+  check_hep_consumption: <Lightning size={14} />,
+  check_vodovod_consumption: <Drop size={14} />,
 };
+
+function splitFact(fact: string): { action: string; finding: string | null } {
+  const idx = fact.indexOf(" — ");
+  if (idx === -1) return { action: fact, finding: null };
+  return { action: fact.slice(0, idx), finding: fact.slice(idx + 3) };
+}
 
 function EvidenceSheetContent({
   flag,
@@ -469,18 +479,23 @@ function EvidenceSheetContent({
             <p className="text-sm font-semibold">Trag istrage</p>
             <span className="text-xs text-muted-foreground">{trace.step_count} koraka</span>
           </div>
-          <div className="relative pl-4 border-l space-y-3.5">
-            {trace.evidence_chain.map((item, i) => (
-              <div key={i} className="flex items-start gap-2.5">
-                <span className="mt-0.5 text-muted-foreground shrink-0">
-                  {TOOL_ICONS[item.tool_called] ?? <MagnifyingGlass size={14} />}
-                </span>
-                <div className="min-w-0 space-y-0.5">
-                  <code className="text-[11px] text-muted-foreground block">{item.tool_called}</code>
-                  <p className="text-sm leading-snug">{item.fact}</p>
+          <div className="relative pl-4 border-l space-y-4">
+            {trace.evidence_chain.map((item, i) => {
+              const { action, finding } = splitFact(item.fact);
+              return (
+                <div key={i} className="flex items-start gap-2.5">
+                  <span className="mt-0.5 text-muted-foreground shrink-0">
+                    {TOOL_ICONS[item.tool_called] ?? <MagnifyingGlass size={14} />}
+                  </span>
+                  <div className="min-w-0 space-y-0.5">
+                    <p className="text-sm font-medium leading-snug">{action}</p>
+                    {finding && (
+                      <p className="text-xs text-muted-foreground leading-snug">{finding}</p>
+                    )}
+                  </div>
                 </div>
-              </div>
-            ))}
+              );
+            })}
           </div>
         </div>
       )}
